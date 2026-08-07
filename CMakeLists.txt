@@ -8,3 +8,6 @@ add_compile_definitions("_DEBUG=$<CONFIG:Debug>")
 add_executable(extender
     src/main.cpp
 )
+add_executable(blockless
+    src/blockless_main.cpp
+)
