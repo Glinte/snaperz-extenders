@@ -56,15 +56,43 @@ namespace snaperz
     
     template<typename T>
     void _right_shift(const __m256i& _value, __m256i& _dst);
-    
+
     template<typename T>
-    void _simulate_step(Extender& extender);
+    void _rotate(const __m256i& _value, __m256i& _dst);
+
+    // Note: the parity is passed in rather than read from the extender, so that
+    //       callers which know it statically (see simulate_pulse) let the
+    //       compiler resolve the window indices at compile time. Without that,
+    //       the windows are indexed by a runtime value and cannot live in
+    //       registers, which costs a round trip through memory every step.
+    template<typename T>
+    void _simulate_step(Extender& extender, uint32_t parity, bool saturated = false);
+
+    // Selects a window without indexing the array by a runtime value. Taking
+    // the address of an element forces the whole array to live in memory, and
+    // these are read once per pulse, so that alone would undo the point of
+    // keeping the windows in registers.
+    inline __m256i _select(const __m256i _values[2], uint32_t index)
+    {
+      return (index == 0) ? _values[0] : _values[1];
+    }
 
     template<typename T>
     bool _finished(const Extender& extender);
 
     template<typename T>
     bool _equals(const Extender& lhs, const Extender& rhs);
+
+    // The index of the most significant active element of a window, i.e. the
+    // position that a segment enters the window at.
+    template<typename T>
+    static constexpr uint32_t kLastElem = std::min(
+      static_cast<uint32_t>(sizeof(__m256i) / sizeof(T) - 1),
+      kSaturationCount / 2 - 1);
+
+    // True when the whole extender fits inside the two windows, so that no
+    // segment ever has to be parked in memory.
+    static constexpr bool kFitsInWindows = (kSegCount == kSaturationCount);
 
 #if _DEBUG
     template<class T>
@@ -143,62 +171,94 @@ namespace snaperz
       //   Blend(RightShift(V, 1), Reverse(V)):
       //        0, V[7], V[6], V[5], V[4], V[3], V[2], V[1].
       //
-      // We can also perform a right rotation this way by blending
-      // back in V[0] as the most significant element.
-      
-      // Perform the right shift on _value first. This should allow the below
-      // reverse operation to be performed in parallel.
-      __m256i _tmp = _mm256_srli_si256(_value, 1);
-      // Reverse the value. This is done in multiple steps. Refer to _reverse
-      // for more info.
-      __m256i _rev;
-      _reverse<uint8_t>(_value, _rev);
-      // Blend the value with index 15 from the reverse into the value, i.e.
-      // only the 15th value should have the 7th bit set. Just use 0xFF, since
-      // the remaining bits are ignored.
-      const __m256i _mask = _mm256_set_epi8(
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-      );
-      _dst = _mm256_blendv_epi8(_tmp, _rev, _mask);
+      // The same result is reached in two instructions instead of four. First
+      // permute the upper 128-bit lane down into the lower one (selecting the
+      // zero source for the upper half), then use a lane-local align to pull
+      // each element one position down, which feeds V[n/2] across the lane
+      // boundary for free:
+      //
+      //   V:
+      //     V[7], V[6], V[5], V[4], V[3], V[2], V[1], V[0].
+      //
+      //   Permute(V, 0x81):
+      //        0,    0,    0,    0, V[7], V[6], V[5], V[4].
+      //   Align(Permute(V, 0x81), V, 1):
+      //        0, V[7], V[6], V[5], V[4], V[3], V[2], V[1].
+      __m256i _hi = _mm256_permute2x128_si256(_value, _value, 0x81);
+      _dst = _mm256_alignr_epi8(_hi, _value, 1);
     }
 
     template<>
-    inline void _simulate_step<uint8_t>(Extender& extender)
+    inline void _rotate<uint8_t>(const __m256i& _value, __m256i& _dst)
+    {
+      // Right shift by one element, re-inserting the evicted element V[0] as
+      // the most significant active element. This is the whole of the segment
+      // bookkeeping whenever the extender fits inside the two windows: the
+      // element leaving the window is exactly the one that has to re-enter it.
+      //
+      // Broadcasting is used to place the evicted element, since it already
+      // sits in the lowest position of the value and a broadcast is a single
+      // instruction that reaches across the 128-bit lane boundary.
+      const __m256i _lane_index = _mm256_setr_epi8(
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+      );
+      const __m256i _insert_mask = _mm256_cmpeq_epi8(
+        _lane_index, _mm256_set1_epi8(static_cast<char>(kLastElem<uint8_t>)));
+      __m256i _shifted;
+      _right_shift<uint8_t>(_value, _shifted);
+      __m256i _evicted = _mm256_broadcastb_epi8(_mm256_castsi256_si128(_value));
+      _dst = _mm256_blendv_epi8(_shifted, _evicted, _insert_mask);
+    }
+
+    template<>
+    inline void _simulate_step<uint8_t>(Extender& extender, uint32_t parity, bool saturated)
     {
       // Constants
       const __m256i _zeros = _mm256_setzero_si256();
       const __m256i _ones = _mm256_set1_epi8(1);
-      
+
       const __m256i _push_limit = _mm256_set1_epi8(kPushLimit);
-      const __m256i _last_push_limit = _mm256_set1_epi8(kLastPushLimit);
       const __m256i _len_plus_one = _mm256_set1_epi8(kLength + 1);
 
       // Compute reference to current (C) and next (N) segment(s). Also flip
       // the parity bit to prepare for next iteration.
-      __m256i& _curr = extender._windows[extender.parity_bit];
-      __m256i& _next = extender._windows[extender.parity_bit ^= 0b1];
-      __m256i& _last_seg_mask = extender._last_seg_masks[extender.parity_bit];
-      // Store the result in the extender segments, so we can use it the next
-      // time the window passes this value (since it will be gone after the
-      // right shift below). Only do this once we have saturated the windows.
-      if (extender.steps >= kSaturationCount)
+      __m256i& _curr = extender._windows[parity];
+      __m256i& _next = extender._windows[parity ^ 0b1];
+      __m256i& _last_seg_mask = extender._last_seg_masks[parity ^ 0b1];
+      extender.parity_bit = parity ^ 0b1;
+      if (kFitsInWindows && (saturated || extender.steps >= kSaturationCount))
       {
-        // Compute the sequence index of the first element in the window.
-        const auto i = (extender.p + (kSegCount - kSaturationCount)) % kSegCount;
-        extender.segments[i] = static_cast<uint8_t>(_mm256_cvtsi256_si32(_next));
+        // Every segment is held in the windows, and the element leaving the
+        // window is exactly the one that re-enters it, so the whole exchange
+        // is a rotation. Going through extender.segments here would store a
+        // value and load it straight back from the same slot.
+        _rotate<uint8_t>(_next, _next);
       }
-      // Shift the next segment one to the right. This will have the effect
-      // of actually making it the next segment (it is the previous segment
-      // at the start of this iteration).
-      _right_shift<uint8_t>(_next, _next);
-      // Insert the next segment (after the last current element) into the
-      // window, as the last element.
-      const auto next_length = extender.segments[extender.p];
-      static constexpr auto kLastElem = std::min(UINT32_C(31), kSaturationCount / 2 - 1);
-      _next = _mm256_insert_epi8(_next, next_length, kLastElem);
+      else
+      {
+        // Store the result in the extender segments, so we can use it the next
+        // time the window passes this value (since it will be gone after the
+        // right shift below). Only do this once we have saturated the windows.
+        if (extender.steps >= kSaturationCount)
+        {
+          // Compute the sequence index of the first element in the window.
+          auto i = extender.p + (kSegCount - kSaturationCount);
+          if (i >= kSegCount)
+          {
+            i -= kSegCount;
+          }
+          extender.segments[i] = static_cast<uint8_t>(_mm256_cvtsi256_si32(_next));
+        }
+        // Shift the next segment one to the right. This will have the effect
+        // of actually making it the next segment (it is the previous segment
+        // at the start of this iteration).
+        _right_shift<uint8_t>(_next, _next);
+        // Insert the next segment (after the last current element) into the
+        // window, as the last element.
+        const auto next_length = extender.segments[extender.p];
+        _next = _mm256_insert_epi8(_next, next_length, kLastElem<uint8_t>);
+      }
 
       // Figure out if we are in the last segment.
       __m256i& _counter = extender._counter;
@@ -215,7 +275,20 @@ namespace snaperz
       // or not. In the case where we are the last segment, the virtual push limit
       // no longer applies directly, and we can actually push an extra block.
       //     _curr_push_limit = _last_segment_mask ? _last_push_limit : _push_limit
-      __m256i _curr_push_limit = _mm256_blendv_epi8(_push_limit, _last_push_limit, _last_seg_mask);
+      //
+      // The mask holds -1 wherever it is set, so whenever the last push limit
+      // is exactly one above the ordinary one (i.e. the hard limit is not
+      // binding) a subtract produces the same value as a blend, for less.
+      __m256i _curr_push_limit;
+      if constexpr (kLastPushLimit == kPushLimit + 1)
+      {
+        _curr_push_limit = _mm256_sub_epi8(_push_limit, _last_seg_mask);
+      }
+      else
+      {
+        const __m256i _last_push_limit = _mm256_set1_epi8(kLastPushLimit);
+        _curr_push_limit = _mm256_blendv_epi8(_push_limit, _last_push_limit, _last_seg_mask);
+      }
       // Compute: PD = min(push_limit, C - 1).
       __m256i _push_delta = _mm256_min_epu8(_curr_push_limit, _curr_minus_one);
       
@@ -261,7 +334,13 @@ namespace snaperz
       // allows for an efficient reset of the counter).
       _counter = _mm256_andnot_si256(_last_seg_mask, _counter);
 
-      extender.p = (extender.p + 1) % kSegCount;
+      // Note: p never reaches kSegCount, so a compare is enough here. A modulo
+      //       by a constant that is not a power of two becomes a multiply, and
+      //       it sits on the loop carried dependency chain.
+      if (++extender.p == kSegCount)
+      {
+        extender.p = 0;
+      }
       extender.steps++;
     }
 
@@ -276,7 +355,7 @@ namespace snaperz
       uint32_t first_seg_index = (extender.p > 0) * (kSaturationCount - extender.p) / 2;
       // Compute the parity, i.e. the window that contains the first segment.
       const uint32_t parity = extender.parity_bit ^ (extender.p & 0x1);
-      const __m256i& _last_seg_mask = extender._last_seg_masks[parity];
+      const __m256i _last_seg_mask = _select(extender._last_seg_masks, parity);
       // We are done once the first segment is also the last segment.
       return _mm256_movemask_epi8(_last_seg_mask) & (1 << first_seg_index);
     }
@@ -333,45 +412,62 @@ namespace snaperz
     inline void _right_shift<uint16_t>(const __m256i& _value, __m256i& _dst)
     {
       // See uint8_t version for implementation details.
-      __m256i _tmp = _mm256_srli_si256(_value, sizeof(uint16_t));
-      __m256i _rev;
-      _reverse<uint16_t>(_value, _rev);
-      const __m256i _mask = _mm256_set_epi8(
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-      );
-      _dst = _mm256_blendv_epi8(_tmp, _rev, _mask);
+      __m256i _hi = _mm256_permute2x128_si256(_value, _value, 0x81);
+      _dst = _mm256_alignr_epi8(_hi, _value, sizeof(uint16_t));
     }
 
     template<>
-    inline void _simulate_step<uint16_t>(Extender& extender)
+    inline void _rotate<uint16_t>(const __m256i& _value, __m256i& _dst)
+    {
+      // See uint8_t version for implementation details.
+      const __m256i _lane_index = _mm256_setr_epi16(
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+      );
+      const __m256i _insert_mask = _mm256_cmpeq_epi16(
+        _lane_index, _mm256_set1_epi16(static_cast<short>(kLastElem<uint16_t>)));
+      __m256i _shifted;
+      _right_shift<uint16_t>(_value, _shifted);
+      __m256i _evicted = _mm256_broadcastw_epi16(_mm256_castsi256_si128(_value));
+      _dst = _mm256_blendv_epi8(_shifted, _evicted, _insert_mask);
+    }
+
+    template<>
+    inline void _simulate_step<uint16_t>(Extender& extender, uint32_t parity, bool saturated)
     {
       // See uint8_t version for implementation details.
       const __m256i _zeros = _mm256_setzero_si256();
       const __m256i _ones = _mm256_set1_epi16(1);
-      
+
       const __m256i _push_limit = _mm256_set1_epi16(kPushLimit);
-      const __m256i _last_push_limit = _mm256_set1_epi16(kLastPushLimit);
       const __m256i _len_plus_one = _mm256_set1_epi16(kLength + 1);
 
-      __m256i& _curr = extender._windows[extender.parity_bit];
-      __m256i& _next = extender._windows[extender.parity_bit ^= 0b1];
-      __m256i& _last_seg_mask = extender._last_seg_masks[extender.parity_bit];
+      __m256i& _curr = extender._windows[parity];
+      __m256i& _next = extender._windows[parity ^ 0b1];
+      __m256i& _last_seg_mask = extender._last_seg_masks[parity ^ 0b1];
+      extender.parity_bit = parity ^ 0b1;
 
-      if (extender.steps >= kSaturationCount)
+      if (kFitsInWindows && (saturated || extender.steps >= kSaturationCount))
       {
-        const auto i = (extender.p + (kSegCount - kSaturationCount)) % kSegCount;
-        extender.segments[i] = static_cast<uint16_t>(_mm256_cvtsi256_si32(_next));
+        _rotate<uint16_t>(_next, _next);
       }
-      
-      _right_shift<uint16_t>(_next, _next);
-      
-      const auto next_length = extender.segments[extender.p];
-      static constexpr auto kLastElem = std::min(UINT32_C(15), kSaturationCount / 2 - 1);
-      _next = _mm256_insert_epi16(_next, next_length, kLastElem);
-      
+      else
+      {
+        if (extender.steps >= kSaturationCount)
+        {
+          auto i = extender.p + (kSegCount - kSaturationCount);
+          if (i >= kSegCount)
+          {
+            i -= kSegCount;
+          }
+          extender.segments[i] = static_cast<uint16_t>(_mm256_cvtsi256_si32(_next));
+        }
+
+        _right_shift<uint16_t>(_next, _next);
+
+        const auto next_length = extender.segments[extender.p];
+        _next = _mm256_insert_epi16(_next, next_length, kLastElem<uint16_t>);
+      }
+
       __m256i& _counter = extender._counter;
       _counter = _mm256_add_epi16(_counter, _curr);
       _last_seg_mask = _mm256_cmpeq_epi16(_counter, _len_plus_one);
@@ -379,7 +475,16 @@ namespace snaperz
       // Handle pushing case:
 
       __m256i _curr_minus_one = _mm256_sub_epi16(_curr, _ones);
-      __m256i _curr_push_limit = _mm256_blendv_epi8(_push_limit, _last_push_limit, _last_seg_mask);
+      __m256i _curr_push_limit;
+      if constexpr (kLastPushLimit == kPushLimit + 1)
+      {
+        _curr_push_limit = _mm256_sub_epi16(_push_limit, _last_seg_mask);
+      }
+      else
+      {
+        const __m256i _last_push_limit = _mm256_set1_epi16(kLastPushLimit);
+        _curr_push_limit = _mm256_blendv_epi8(_push_limit, _last_push_limit, _last_seg_mask);
+      }
       __m256i _push_delta = _mm256_min_epu16(_curr_push_limit, _curr_minus_one);
       
       __m256i _equal_one_mask = _mm256_cmpeq_epi16(_curr, _ones);
@@ -400,7 +505,13 @@ namespace snaperz
       _last_seg_mask = _mm256_cmpeq_epi16(_counter, _len_plus_one);
       _counter = _mm256_andnot_si256(_last_seg_mask, _counter);
 
-      extender.p = (extender.p + 1) % kSegCount;
+      // Note: p never reaches kSegCount, so a compare is enough here. A modulo
+      //       by a constant that is not a power of two becomes a multiply, and
+      //       it sits on the loop carried dependency chain.
+      if (++extender.p == kSegCount)
+      {
+        extender.p = 0;
+      }
       extender.steps++;
     }
 
@@ -411,7 +522,7 @@ namespace snaperz
       assert(0 <= extender.p && extender.p <= kSaturationCount);
       uint32_t first_seg_index = (extender.p > 0) * (kSaturationCount - extender.p) / 2;
       const uint32_t parity = extender.parity_bit ^ (extender.p & 0x1);
-      const __m256i& _last_seg_mask = extender._last_seg_masks[parity];
+      const __m256i _last_seg_mask = _select(extender._last_seg_masks, parity);
       // Note: should be shifted twice as far over due to 16-bit versus 8-bit.
       return _mm256_movemask_epi8(_last_seg_mask) & (1 << (2 * first_seg_index));
     }
@@ -474,17 +585,39 @@ namespace snaperz
 
   void simulate_pulse(Extender& extender)
   {
-    // Make sure that we fit another pulse in the currently active window.
-    // Otherwise, simulate until we have finished the current pulses (or
-    // at least the oldest one of the ones in the active window).
-    while (extender.p >= kSaturationCount)
+    if constexpr (avx2::kFitsInWindows)
     {
-      // Simulate the rest of the extender.
-      avx2::_simulate_step<len_t>(extender);
+      // Here p never reaches kSaturationCount, so no draining is needed and
+      // every pulse is exactly two steps. The parity bit therefore always
+      // holds the same value at a pulse boundary, and passing it in as a
+      // literal keeps both windows in registers across the whole simulation.
+      assert(extender.parity_bit == 0b0);
+      const bool saturated = extender.steps >= kSaturationCount;
+      if (saturated)
+      {
+        avx2::_simulate_step<len_t>(extender, 0b0, true);
+        avx2::_simulate_step<len_t>(extender, 0b1, true);
+      }
+      else
+      {
+        avx2::_simulate_step<len_t>(extender, 0b0, false);
+        avx2::_simulate_step<len_t>(extender, 0b1, false);
+      }
     }
-    // Actually simulate the next pulse.
-    avx2::_simulate_step<len_t>(extender);
-    avx2::_simulate_step<len_t>(extender);
+    else
+    {
+      // Make sure that we fit another pulse in the currently active window.
+      // Otherwise, simulate until we have finished the current pulses (or
+      // at least the oldest one of the ones in the active window).
+      while (extender.p >= kSaturationCount)
+      {
+        // Simulate the rest of the extender.
+        avx2::_simulate_step<len_t>(extender, extender.parity_bit);
+      }
+      // Actually simulate the next pulse.
+      avx2::_simulate_step<len_t>(extender, extender.parity_bit);
+      avx2::_simulate_step<len_t>(extender, extender.parity_bit);
+    }
   }
 
   bool equals(const Extender& lhs, const Extender& rhs)
