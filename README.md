@@ -37,6 +37,17 @@ gcc -mavx2 -dM -E - < /dev/null | egrep "SSE|AVX" | sort
 ```
 Your CPU supports AVX2 if the `#define __AVX2__ 1` line is shown in the output.
 
+## SSE2 for older machines
+Without AVX2 the program used to drop all the way down to the scalar fallback. There is now an intermediate implementation that needs only SSE2, which every x86-64 chip has. It stores prefix sums of the segment lengths rather than the lengths themselves, which turns a pulse into a three state finite automaton over the segments and lets most of the work be vectorized. The comment at the top of `src/snaperz_extender_fsm.h` has the derivation.
+
+It is selected automatically when AVX2 is unavailable, and only for period 12, where the push limit is one. On a length 49 extender it takes about 15s against the fallback's 22s. It is not a replacement for the AVX2 implementation, which does the same run in 1.4s: that one parallelizes across concurrent pulses, which is a fundamentally better decomposition than parallelizing within a single pulse.
+
+To check the implementations against each other and time them on your own machine:
+```bash
+./tools/compare_implementations.sh 44 49
+```
+A specific implementation can be forced with `-DSNAPERZ_FORCE_FSM=1` or `-DSNAPERZ_FORCE_FALLBACK=1`, and the extender configured from the build with `-DSNAPERZ_LENGTH=`, `-DSNAPERZ_PERIOD=` and `-DSNAPERZ_HARD_PUSH_LIMIT=`.
+
 ## Credit
 
 Development into Snaperz extenders spans multiple years. If you played a role but we forgot to list you here, contact us and we will add your name.
