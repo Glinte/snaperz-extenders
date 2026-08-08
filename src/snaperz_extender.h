@@ -101,11 +101,21 @@ namespace snaperz
   bool finished(const Extender& extender);
 }
 
-// Specialized implementations of the snaperz extender.
-#if __AVX2__
+// Specialized implementations of the snaperz extender. Define SNAPERZ_FORCE_FSM
+// or SNAPERZ_FORCE_FALLBACK to pick a specific one regardless of what the CPU
+// supports, which is what the test harness uses to compare them against each
+// other on the same machine.
+#if SNAPERZ_FORCE_FALLBACK
+#include "snaperz_extender_fallback.h"
+#elif __AVX2__ && !SNAPERZ_FORCE_FSM
 // Use the faster AVX2 implementation
 #include "snaperz_extender_avx2.h"
-#else // __AVX2__
-#warning "AVX2 not supported. Using fallback implementation."
+#elif __SSE2__ && SNAPERZ_PUSH_LIMIT == 1 && SNAPERZ_LENGTH < 255
+// No AVX2, but SSE2 is guaranteed on x86-64. The prefix-sum implementation
+// vectorizes a single pulse instead of a window of pulses, which needs nothing
+// wider than 128 bits.
+#include "snaperz_extender_fsm.h"
+#else
+#warning "Neither AVX2 nor SSE2 applies. Using fallback implementation."
 #include "snaperz_extender_fallback.h"
-#endif // !__AVX2__
+#endif
