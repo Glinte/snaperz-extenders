@@ -48,6 +48,23 @@ To check the implementations against each other and time them on your own machin
 ```
 A specific implementation can be forced with `-DSNAPERZ_FORCE_FSM=1` or `-DSNAPERZ_FORCE_FALLBACK=1`, and the extender configured from the build with `-DSNAPERZ_LENGTH=`, `-DSNAPERZ_PERIOD=` and `-DSNAPERZ_HARD_PUSH_LIMIT=`.
 
+## Counting pulses without simulating them
+
+For period 12 the pulse count can be derived rather than simulated, at least in
+part. `src/blockless.h` and the `blockless` target implement the good-pair
+reduction: deleting the extender block leaves a sweep on Catalan states, and the
+pulse count comes back as `T_L = (1 + eps_L) * p_L - (L - 1)` from the cycle
+length of that sweep. It is a large constant-factor win over simulating pulses,
+not an asymptotic one, and it agrees with the AVX2 implementation everywhere
+both have been run.
+
+The theory behind it, the exact values of `B_L` up to L = 69, and — more useful
+to anyone picking this up — the list of approaches that were tried and measured
+dead, are written up in [`docs/research-notes.md`](docs/research-notes.md). The
+programs that check each claim are in [`research/`](research/README.md). The
+short version is that no subexponential algorithm was found and the estimated
+odds of one being reachable from here are about 2%.
+
 ## Credit
 
 Development into Snaperz extenders spans multiple years. If you played a role but we forgot to list you here, contact us and we will add your name.
