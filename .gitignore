@@ -43,3 +43,12 @@ build/
 *.exe
 *.out
 *.app
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Research program outputs
+research/build/
+sections69.txt
+g18.json
