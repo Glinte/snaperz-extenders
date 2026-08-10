@@ -101,9 +101,74 @@ tail only through the 3-state carry. So the two-way interface is exactly
 
 **112-block Toeplitz template.** For m = 15..30, `112 | q_m`, and positions
 0..110 of each 112-block are universal, independent of m, with gap frequencies
-`{1:56, 3:28, 5:14, 9:8, 11:4, 13:1}` summing to 339. Only position 111 (the
-"hole") varies, so `p_L = 451 * (q_{L-1} / 112) + sum(holes)`. This gives
-weights and never states, which is why it does not speed anything up.
+`{2:56, 4:28, 6:14, 10:8, 12:4, 14:1}` summing to 450. Only position 111 (the
+"hole") varies, so `p_L = 450 * (q_{L-1} / 112) + sum(holes)`.
+
+**The renormalized map `R_r`, which supplies the states the template never did.**
+Write `S_{t,r}(c,v) = (c, A_{r-1}^t v)` for the root-preserving forest clock.
+Then one restored 16-cell prefix induces the tail map
+
+    R_r = H_r . S_{30,r} . A_r^435,   i.e.   R_r(y) = J_r^c(0, A_{r-1}^31 v)
+    where (c, v) = A_r^435(y),
+
+because the reset deletes the root `(c,v) -> (0, A_{r-1} v)`, runs 30 sweeps with
+the lead coordinate zero, then reinjects `c` times, for elapsed time
+`435 + 1 + 30 + c = 466 + c`. Hence
+
+    A_{16+r}^{466+c}(E_16 || y) = E_16 || R_r(y),   H_{15+r}^112(E_15 || y) = E_15 || R_r(y),
+
+and with `y_0 = E_r`, `y_{j+1} = R_r(y_j)`, `M_r` the period,
+
+    p_{16+r} = sum_j (466 + c_j) = 466 M_r + sum_j z(y_j),
+
+using `z(R_r(y)) = (A_r^435 y)_0`. Verified: the closed form against the literal
+112-returns for all 625 Catalan tails to r = 7; the recurrence against direct
+simulation for L = 17..34; and `M_r` against the `B_L` table to L = 42.
+
+`M_r` for r = 1..26: 1, 1, 2, 1, 4, 2, 4, 2, 8, 10, 12, 16, 24, 10, 246, 14, 78,
+19, 430, 80, 824, 34, 1506, 46, 816, 395.
+
+This *is* the 112 template: the block count is exactly `M_r` and the hole is
+exactly `16 + z(y_j)`, so `450 M + sum(holes)` and `466 M + sum z` are the same
+sum. The template gave weights and never states; `R_r` is the missing half. What
+it does not give is a speedup — `M_r ~ p_{16+r}/469`, so the reduced orbit is
+just as long, and a literal evaluation of `R_r` does the same weighted work on
+`L - 16` cells instead of `L`. The ceiling is `L/(L - 16)` (2.07x at L = 31,
+1.30x at L = 69, 1.016x at L = 1024), which tends to 1 and so is not a
+constant-factor win. It is nonetheless a better macro than the checkpoint map,
+where reducing the iteration count raised the per-iteration work by almost
+exactly the inverse amount; here the 16 cells really do leave the computation.
+
+**The obstruction to a bounded block interface.** The tempting simplification
+`R_r = H_r . A_r^435` drops `S_{30,r}` and happens to hold through r = 5, then
+fails at r = 6 (31 of 132 states; 151/429 at r = 7). The reason is exact: the
+root-one fibre contains all phases `(1, A_{r-1}^t E_{r-1})`, at r = 6 the
+canonical `A_5`-cycle has `p_5 = 13`, and `30 = 4 (mod 13)`, so the forest clock
+is nontrivial. Any exact block interface recording only the root — or any
+bounded alphabet independent of r — must therefore fail; the interface has to
+carry an arithmetic phase. This is a rigorous reason the static-atom and
+root-only cocycle approaches could not close.
+
+**Small-tail phase map, and why phase coordinates die.** `G_m = Theta_m . H_m`
+preserves root degree, so it has a root-one section
+`G_{s+1}(1, v) = (1, Gamma_s(v))` with `Gamma_s = Theta_s . S_{1,s} . A_s`
+(0 failures, s <= 8). This isolates the phase question inside `C_s` without
+simulating a 65-71 cell extender, and the answer is bad. Representing a state as
+(`A`-cycle identifier, phase mod its period) needs `Gamma_s` to carry the
+canonical `A_s`-cycle into few cycles with an affine action on phase. Instead it
+**scatters**: the `p_s` points of the canonical cycle land on
+
+    s        2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17
+    p_s      2    5    6   13   14   28   30   31   32   64   34  129  198  225  466  467
+    targets  1    1    3    5    8   14   20   23   26   49   30  112  175  205  426  444
+
+distinct target cycles, with target periods running up to 7,162 at s = 17. The
+targets-per-point ratio climbs monotonically — 0.50, 0.67, 0.81, 0.87, 0.91,
+0.95 at s = 4, 8, 10, 13, 15, 17 — so the "cycle identifier" is asymptotically as
+big as the state itself, not a small label. The two cases that do land on a
+single cycle settle it further: at s = 3 the induced phase map is not even
+affine. This is the failure mode the phase-coordinate route was warned about, and
+it happens at the smallest sizes, not asymptotically.
 
 ## Data
 
@@ -175,6 +240,52 @@ This is the project's first genuine partial fast-forward, but it moves the tail
 *phase* only; there is no cheap `P_780 -> P_1614` prefix map, so it is not a
 whole-state macro.
 
+It holds far more widely than the 16-clock sections. Over **every** checkpoint of
+the L = 69 orbit there are 179,665 clean 56-cuts, of which only 131 have their
+13-tail off the canonical `A_13` cycle, and the law holds on all 178,354
+reflected pairs with the same constant 43.
+
+**Where the constant comes from, and where it does not.** `43 = 56 - 13 = n - s`.
+Reading it instead as `n + B_s - 1` is an artifact: since `p_s = B_s + s - 1`,
+`n + B_s - 1 = n - s (mod p_s)` identically, so `B_13 = 117` cancels and carries
+no information. The law `phi_j + phi_-j = z(P_j) + n - s (mod p_s)` is **not**
+general over clean `n|s` cuts. Measured over every clean cut of every orbit to
+L = 44 plus L = 69:
+
+- it holds at `n = 8` (L = 10..20, 26..32), at `n = 16` (L = 18..36, every
+  s = 2..20 bar three), at `n = 24` (L = 35), `n = 32` (L = 42), and at both
+  `n = 56` and `n = 48` for L = 69 — the L = 69 `48|21` cut gives 186 pairs at a
+  fixed constant 27 = 48 - 21;
+- it fails at generic `n`. Inside L = 69 itself the `60|9` cut has no fixed
+  constant at all over the full orbit, and on the round-14 112-sections it has a
+  fixed constant 25 against a predicted 20;
+- and it is not universal even at the cuts that usually work: at `(n,s)` =
+  (16,6), (16,8), (16,14), (8,14), (8,16) the constant is not constant, and at
+  (24,4), (24,6) it is fixed but wrong.
+
+Every cut that carries the law has `8 | n`, but that is not sufficient, and no
+sharper characterization survived. Treat `43` as a measured fact about the
+`56|13` cut of L = 69, not as an instance of a general law.
+
+**The obvious proof of the law is dead.** The natural route was to combine the
+already-proven telescoping identity `t_k + t_{N-k} = p_L - L + z(x_k)` with phase
+lock `phi_k = t_k + c`, which would force the constant to be `p_L - L + 2c`. But
+phase lock is *not* global: over all clean checkpoints at L = 69, `n = 56` there
+are 62 distinct lock offsets with the mode covering only 48.6% (round 14 saw a
+single offset because it only looked at 112-sections with `j <= 780`), and even
+at `n = 16` there are exactly 2 offsets at 50/50 for every L. The forced constant
+would be 93, not 43. So the reflection law survives precisely where phase lock
+fails, and is a genuinely separate fact rather than a corollary. It remains
+unproven.
+
+**The reflection map is not a Catalan involution.** The natural candidate is
+`Psi_m = H_m . Theta_m`, which exactly satisfies `Psi_m(E_m) = E_m` and
+`z(Psi_m(x)) = z(x)`, and reflects the canonical `H`-cycle through m = 5. It
+fails at m = 6: with `b = H_6(E_6) = (3,0,0,1,2,0)`, `H_6 Theta_6(b) =
+(5,0,0,0,0,1)` while `H_6^{-1}(E_6) = R_6 = (6,0,0,0,0,0)`. The discrepancy
+again lives on the period-13 `A_5`-cycle. So `P -> P^dagger` needs a forest-phase
+correction; it is not a relabelling of plane trees.
+
 **129-phase uniqueness** is the strongest L = 69 statement to date. Holding the
 real 56-cell prefix at outer step 780 and substituting all 129 tail phases:
 {19, 21, 23, 25} survive 834 outer returns, {19, 21, 23} survive 1,614, and
@@ -219,8 +330,22 @@ Do not retry these without genuinely new information.
 - **Nested first-return recursion `F_k`** — telescopes to the flat orbit, zero
   cache hits.
 - **Suffix-independent stems** — exactly k = 1, 3, 7, 8, 16 with times 1, 2, 8,
-  8, 112, swept to 45. The law `H^112(1^16 u) = 1^16 J(u)` is real, but `J` has
-  no closed form.
+  8, 112, swept to 45. The law `H^112(1^16 u) = 1^16 J(u)` is real, and `J` does
+  have a closed form: it is `R_r` above. But "closed form" here means an explicit
+  466-sweep composition, not a cheap one, so Rule 1 still bites.
+- **Recursive 16-cell peeling** — the one route the `R_r` derivation suggested,
+  and it dies at the first step. If the renormalized tail dynamics re-entered the
+  shielded form we could peel 16, then 32, then 48 cells; instead `R_r(E_r)` never
+  has an `E_16` prefix for any r = 17..30, and over the full `R_r` orbit the
+  shielded set is essentially never revisited (0 visits for r = 17..24 and 26; 4
+  of 816 at r = 25). The longest run of leading ones anywhere on those orbits is
+  1-7 cells. So the 16-peel is a one-off, the `L/(L-16)` ceiling stands, and
+  there is no hierarchy to recurse on.
+- **Proving the phase-reflection law from phase lock** — see the L = 69 section.
+  Phase lock is not global, and the constant it would force is wrong.
+- **Phase coordinates, i.e. representing a state as (`A`-cycle identifier, phase
+  mod its period)** — `Gamma_s` scatters one source cycle across ~`p_s` target
+  cycles already at s = 17, and is not affine even when it does not scatter.
 - **Clean 4 -> 8 -> 16 -> 32 shielding hierarchy** — fails at 32. Related dead
   guesses: `s_n = B_n - n` (predicts `s_32 = 6527`, measured 435) and growing
   shielding (it saturates).
@@ -289,7 +414,10 @@ sparse-perturbation hope.
    produced in `o(weight)` work.** Check that before benchmarking. The same
    obstruction has been rediscovered six times: the 112 template, `G_16`, `rho`,
    the "4.2x checkpoint speedup", the "L=18 gap word", and the 16-clock
-   renormalized map `R_r`. Measured flat-vs-checkpoint gate counts at
+   renormalized map `R_r`. The one thing that did survive the rule is `R_r`'s
+   explicit form, and only because it drops 16 cells rather than reducing the
+   iteration count — worth `L/(L-16)`, which tends to 1. Measured
+   flat-vs-checkpoint gate counts at
    L = 12..24 are 1.19, 1.09, 1.08, 1.07, 1.06, 1.06 — converging to 1. **Any
    summary calling the checkpoint map a constant-factor win is wrong.**
 2. **Repeated squaring needs `|A^t|` polylog in t, not polynomial.** An earlier
@@ -335,11 +463,21 @@ algebraically.
 
 Odds of a subexponential algorithm existing and being findable from here: **~2%**,
 with one route left — derive the growth bases, which needs an idea rather than a
-measurement. Open sub-problems, if anyone wants them: prove the phase-reflection
-law abstractly and find a cheap `P -> P^dagger` prefix map (without it, L = 69 is
-diagnosed but not explained); and for the general fast-forward, the only
-surviving target named is a nonlinear defect-cocycle representation closed under
-composition.
+measurement. The `R_r` renormalization is the first exact state-level macro in
+the project and it sharpened the picture considerably, but it did not move that
+number: its reduced orbit has the same length (`M_r ~ p_L/469`), its own
+suggested recursion is measured dead, and the interface result says only what an
+exact interface *cannot* be (any bounded alphabet independent of r). The route it
+pointed at instead — state as (cycle identifier, phase) — is now measured dead
+too, so the count of surviving routes went down rather than up.
+
+Open sub-problems, if anyone wants them: prove the phase-reflection law
+abstractly — the phase-lock route is now closed, so this needs a new mechanism —
+and find a cheap `P -> P^dagger` prefix map (without it, L = 69 is diagnosed but
+not explained); characterize which cuts `n|s` carry the constant `n - s`, since
+it is neither all clean cuts nor exactly the stem set; and for the general
+fast-forward, the only surviving target named is a nonlinear defect-cocycle
+representation closed under composition.
 
 **Recommendation on record: treat the research thread as closed and take the
 AVX2 hot loop as the deliverable.**

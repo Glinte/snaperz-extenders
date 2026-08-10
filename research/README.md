@@ -131,6 +131,33 @@ Round 14 — auditing the continuation:
 - `r14f.c` — the `56 + s` tail phase-lock table and the injected root `q`, which
   is where the 16-barrier shows up again at `s = 17`.
 
+Round 15 — auditing the `R_r` renormalization:
+
+- `r15a.py` — the state-level renormalization itself: the closed form for `H`,
+  `R_r = H_r . S_{30,r} . A_r^435` in both spellings, the literal 112-return and
+  `466 + c` full-sweep identities, the first failure of the naive
+  `H_r . A_r^435` at r = 6, the periods `M_r` and the recurrence
+  `p_{16+r} = 466 M_r + sum z(y_j)` against direct simulation, the
+  `Psi = H.Theta` reflection candidate failing at m = 6, and the section
+  `Gamma_s`.
+- `r15b.c` — the reflection constant over every clean `n|s` cut of every orbit it
+  can run. This is what shows the proposed general law is false at generic cuts
+  and true at the stem cuts, and that `43 = n - s` with `B_s` cancelling.
+  `./build/r15b <L> <n>` tests a single cut.
+- `r15c.c` — the lock offset `(phi_k - t_k) mod p_s` over every clean checkpoint,
+  which kills the phase-lock proof of the reflection law: 62 distinct offsets at
+  L = 69, and the constant it would force is 93 rather than 43.
+- `r15d.py` — welds `R_r` to the 112-block template: block count `= M_r`, hole
+  `= 16 + z(y_j)`, universal 111-gap prefix summing to 450.
+
+- `r15e.py` — the recursive-16-peel test, which is the one route the `R_r`
+  derivation suggested and the one it kills: the `R_r` orbit never returns to
+  shielded form, so there is no second level to peel.
+- `r15f.py` — the cycle-quotient audit for `Gamma_s`, which is the decisive test
+  for phase coordinates. `Gamma_s` scatters the canonical `A_s`-cycle across
+  ~`p_s` distinct target cycles, so the cycle identifier is as large as the
+  state.
+
 ## What is not here
 
 The Lean formalization lives in a separate repository. Its early attempts
