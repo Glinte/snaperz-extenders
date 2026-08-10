@@ -157,6 +157,17 @@ Round 15 — auditing the `R_r` renormalization:
   for phase coordinates. `Gamma_s` scatters the canonical `A_s`-cycle across
   ~`p_s` distinct target cycles, so the cycle identifier is as large as the
   state.
+- `r15g_bench.cpp` — does `R_r` pay? It checks the renormalized counter against
+  `blockless::run_scalar` on `B_L`, `eps_L` and `T_L`, times the two, and
+  measures the wavefront's ns/sweep across L. Answers: yes on the scalar path
+  (1.2-3.1x), no on the wavefront, whose cost does not depend on L at all.
+  `./build/r15g_bench renorm <L>` runs the renormalized counter alone.
+- `r15h_avx512.cpp` — validates `src/blockless_avx512.h`, the 64-lane windows
+  that carry L <= 127, against the 256-bit windows on every length where both
+  work and against the `B_L` table.
+
+The two C++ programs include `../../src/blockless.h`, so they check the shipped
+counter rather than a copy of it.
 
 ## What is not here
 

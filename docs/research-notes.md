@@ -452,6 +452,32 @@ sparse-perturbation hope.
 - `src/blockless.h` implements the good-pair reduction and matches
   `research/snaperz_p12.py` exactly (L = 49 gives `p = 94,695,837`; L = 31 gives
   `B`, L = 41 gives `2B + L - 1`). Good cross-validation of both.
+- **The blockless wavefront's cost does not depend on L.** Measured 9.5-12 ns
+  per sweep, flat over L = 21..64. It holds the whole extender in lanes, so the
+  only thing that matters is whether the extender *fits*. This is also the
+  reason `R_r` is useless to it: `R_r` removes 16 cells and leaves the sweep
+  count alone, and the wavefront does not care about cells.
+- **What actually cost time was the fit, not the length.** Two 32-lane uint8
+  windows hold `kSegCount <= 64`, so L >= 65 silently fell back to the scalar
+  sweep — about 30x slower per sweep. `src/blockless_avx512.h` widens the
+  windows to 64 lanes and carries L <= 127; the ceiling is 127 rather than 128
+  because lanes are compared as signed bytes and `R_L = (L, 0, ...)` has to fit
+  in one. **L = 66: 24.9s -> 1.29s (19x). L = 69: 0.41s -> 0.018s (23x).**
+  Validated by `research/audit/r15h_avx512.cpp`: 30 lengths cross-checked
+  against the 256-bit windows with 0 mismatches, plus every tabled `B_L`.
+  The wide path is *slower* where both apply (0.7x at L = 64 — the byte shift
+  costs a cross-lane permute where 256-bit gets one `alignr`, and the wider code
+  clocks lower), so it is tried second and only where the narrow one does not
+  fit. Against 1.5x from `R_r` on the same lengths, the fit is worth ~13x more
+  than the renormalization, and needs none of the theory.
+- The `R_r` renormalization does give a real win on the *scalar* path, where
+  cost is `O(p_L * L)`: measured 1.2-3.1x over L = 31..69, tracking the
+  predicted `(L-1)/(L-17)` and often beating it on cache. It is also a correct
+  counter rather than just a period formula — `eps_L`, and so `T_L`, come out
+  right, which is not obvious, because the macro model's tail does *not* track
+  the real tail sweep by sweep (0 of 429 at r = 7) and only the top-cell parity
+  agrees. But it is dominated by simply fitting the extender in lanes, so it is
+  a curiosity rather than a deliverable.
 
 ## Status
 
