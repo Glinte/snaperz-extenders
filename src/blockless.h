@@ -1,4 +1,5 @@
 #pragma once
+#define SNAPERZ_BLOCKLESS_H_INCLUDED 1
 // AVX2 wavefront for the *blockless* sweep A of a P=12 snaperz extender.
 //
 // The blockless state is a_0 .. a_{L-1} with sum L, starting at E_L = (1,...,1).
@@ -295,12 +296,33 @@ namespace blockless
     return r;
   }
 
+} // namespace blockless
+} // namespace snaperz
+
+// Wider windows for the lengths the 32-lane ones cannot hold. Included here,
+// after Result exists, because it is an alternative body for the same wavefront
+// rather than a separate algorithm.
+#include "blockless_avx512.h"
+
+namespace snaperz
+{
+namespace blockless
+{
+  // Narrow windows first: they reach L <= 64 and are the fastest per sweep.
+  // Wide windows carry L <= 127, at about 0.6x the per-sweep rate but against a
+  // scalar path that is roughly 20x slower again, so the order matters.
   inline Result run()
   {
     if constexpr (Config<kLength>::kFits)
     {
       return run_avx2<kLength>();
     }
+#if SNAPERZ_BLOCKLESS_HAVE_AVX512
+    else if constexpr (wide::Config<kLength>::kFits)
+    {
+      return wide::run<kLength>();
+    }
+#endif
     else
     {
       return run_scalar(kLength);

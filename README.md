@@ -58,6 +58,14 @@ length of that sweep. It is a large constant-factor win over simulating pulses,
 not an asymptotic one, and it agrees with the AVX2 implementation everywhere
 both have been run.
 
+Its wavefront keeps the whole extender in vector lanes, so what matters is
+whether the extender fits, not how long it is: the cost is about 10ns per sweep
+whether L is 21 or 64. With 256-bit windows it fits L up to 64, and anything
+longer dropped to the scalar sweep, roughly 20x slower. `src/blockless_avx512.h`
+widens the windows to 64 lanes where AVX512BW is available, carrying L up to
+127 — at L = 66 that is 1.3s against 25s. It is used only for lengths the narrow
+windows cannot hold, since it runs at about 0.7x their speed where both apply.
+
 The theory behind it, the exact values of `B_L` up to L = 69, and — more useful
 to anyone picking this up — the list of approaches that were tried and measured
 dead, are written up in [`docs/research-notes.md`](docs/research-notes.md). The
