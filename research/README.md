@@ -169,6 +169,37 @@ Round 15 — auditing the `R_r` renormalization:
 The two C++ programs include `../../src/blockless.h`, so they check the shipped
 counter rather than a copy of it.
 
+The recursive-lift audit adds:
+
+- `r16_cocycle.c` — the boundary-event cocycle of a clean `n|s` cut. At the
+  default L = 69, cut 56, it reproduces the 84 constant-`d` runs, the four event
+  words, the palindromic jump word, the holonomy 110, and the `43 = 62 + 110`
+  decomposition. Pass another cut to get the census showing that `48|21` carries
+  the reflection law while `60|9` and `64|5` do not.
+- `r17_r21.c` — `--defect L` measures the odd defect gas (`max delta =
+  (L-15)/2`, exactly, for odd L = 17..45); `--tiles` finds the 84 intervals at
+  L = 69 on which the 13-cell tail runs as an autonomous canonical `A_13` clock.
+- `r18_eco.py` — the rightmost-peak lift, the complete fibre-transition theorem
+  including the exceptional down edge that the old last-peak lemma excluded, the
+  `C_{n-1}` up/down census, and `Xi` as a permutation with `sum w = p_L` and a
+  palindromic canonical weight word.
+- `r18_xi.c` — the same at scale: `Xi`-period and weight distribution for large
+  L (L = 69 gives `13^64 21^11680 28^11680 31^5758 77^2 379^40 2597^40
+  254167^1`), plus the `UDDDD` local section criterion, exact at L = 69 and at
+  no other tested length.
+- `r19_cycles.c` — complete cycle decomposition of `A_n` by direct enumeration,
+  which is what the recursively reconstructed `A_14` and `A_15` censuses are
+  checked against.
+- `r20_lz.c` — the final-descent `U/F/D` itinerary: exact LZ78 phrase count and
+  the global height-reflection law. This is the program behind the finding that
+  the grammar size tracks `p_L^0.68`, not `L^3`.
+- `r22_tree.py` — the recursive plane-tree sweep and its inverse, the
+  subtree-endpoint rotor, `ord(T_i) = lcm(1, ..., n-i)`, the append law, and the
+  persistent proper-subtree cache counts.
+- `r23_even.py` — the even sector as 2-Dyck states: the Fuss-Catalan bijection,
+  `K_n = A_{2n}^2`, the no-flat theorem, and the one-bit-carry sequential kernel
+  for a half-sweep.
+
 ## What is not here
 
 The Lean formalization lives in a separate repository. Its early attempts
