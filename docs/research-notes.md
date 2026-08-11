@@ -170,6 +170,87 @@ single cycle settle it further: at s = 3 the induced phase map is not even
 affine. This is the failure mode the phase-coordinate route was warned about, and
 it happens at the smallest sizes, not asymptotically.
 
+### The recursive lift
+
+**The last-peak lemma is now complete.** In rightmost-peak (ECO) coordinates
+`lam_n(t, r)`, `0 <= r <= h(t)`, where `h(t) = n - max{i : t_i > 0}` is the final
+descent and the peak is inserted leaving `r` old down-steps after it, the final
+descent takes a Motzkin step: `h(A_n t) - h(t) in {-1, 0, +1}`, decided by the
+value `c = u_j` (`u = P_n(t)`, the gates strictly before the last positive
+coordinate, `j = n - h(t)`) as `c = 0 -> +1`, `c = 1 -> 0`, `c >= 2 -> -1`. The
+up and down counts are each exactly `C_{n-1}`. `A_{n+1}` then acts on `(t, r)`
+by shifting the fibre, except for the single exceptional edge
+
+    pi(A_{n+1}(lam_n(t, h(t)))) = P_n(t)   (not A_n(t))
+
+on a down edge, which is the case the old lemma excluded. Zero failures over all
+of `C_10`.
+
+**`Xi` and the return recurrence.** The section
+`eta_m(v) = lam_{m+1}(lam_m(v, h(v)), h(v))` is exactly the set of states whose
+rightmost nonzero coordinate is 1, is followed by a zero, and has a left
+neighbour `>= 2`; it has `C_m` elements. The first return `Xi_m` to it is a
+permutation of `C_m` with weights `w_m`, and
+
+    p_{m+2} = sum over the canonical Xi-cycle of w_m,
+
+anchored at `eta_m(R_m) = A_L(R_L) = (L-1, 1, 0, ..., 0)`. The canonical weight
+word is a **palindrome** for every L = 3..46 and for L = 69; that is specific to
+the canonical cycle (at m = 3 only one of the three `Xi_3`-cycles is
+palindromic). It is a sharply stated theorem candidate with no proof yet.
+
+**Two-slot monodromy.** Root a base `A_n`-cycle at a state of minimum final
+descent; the cyclic height word is then a Motzkin excursion. Every fibre
+position `d >= 2` returns to itself after one lap, and the one-lap monodromy on
+`{0, 1}` is one of the seven partial injections of a two-element set. Hence
+every hole exits in under three base periods, `0 < w < 3p`, which is a property
+of the ECO fibre dynamics and not of Snaperz. One scan of a base cycle therefore
+yields all of `Xi` above it, and the cycle-length multiset of `A_{n+1}` follows
+from the cycles of `A_n` — verified against direct enumeration through `A_15`.
+
+**One sweep is a short recursion on plane trees.** Append an implicit zero to a
+Catalan state and read it as the preorder outdegree sequence of a rooted plane
+tree `T = (T_1, ..., T_d)`. Writing `U (+) V` for "append V as the last child of
+the root of U", the whole sweep is
+
+    F(.)                    = .
+    F((S))                  = (., F(S_1), ..., F(S_k))
+    F((T_1, ..., T_d))      = (F(T_1 (+) T_2), F(T_3), ..., F(T_d)),  d >= 2
+
+with an equally short inverse (a leading recovered leaf can only have come from
+the unary case; otherwise split the last child off the first child). This is a
+structural proof that `A_n` is a permutation, and it is the exact reason
+firewalls exist: after the root rewrite each child occupies a contiguous
+preorder interval ending at a leaf, so the boundary gate is a no-op and the rest
+of the sweep factors. The interface law is
+`F(U (+) V) = F(U) (+) F(V)` once `deg U >= 2`, so the *only* cross-subtree
+carry is a reversible push down a unary spine. Each local gate moves one
+subtree endpoint, `ord(T_i) = lcm(1, ..., n-i)`. Zero failures over all Catalan
+states to n = 11 and all pairs to combined size 10.
+
+**Even lengths are 2-Dyck states.** Encoding the good pairs by
+`(0, 2d) -> (0, d)` and `(2c-1, 2d+1) -> (c, d)` is a bijection from the aligned
+sector onto the Fuss-Catalan states `sum b_i = n`, `2 sum_{i<=k} b_i >= k+1`,
+counted by `C(3n, n)/(2n+1)`. `A` alternates the aligned and staggered sectors,
+so `K_n = A_{2n}^2` is a permutation of them, and since the physical final
+descent has opposite parity in the two sectors, `h(Ax) - h(x) in {-1, +1}`:
+**there are no flat height steps in the even sector**. One half-sweep is a
+sequential transducer with a *one-bit* carry over the pair coordinates — the
+even-sector specialization of the 3-state carry automaton in the engineering
+section, with the wrap case excluded by parity. The corresponding ternary ECO
+lift has 8 edge types, a three-slot monodromy and `0 < w < 4p`.
+
+**No exact merging quotient exists.** If `q(Fx) = f(q(x))` is deterministic and
+some observable recoverable from `q` singles out one point of a cycle, then `q`
+is injective on that cycle. On the canonical `A_L`-cycle `a_0 = L` holds only at
+`R_L`, so *every* exact deterministic quotient that can still recognize
+retraction has at least `p_L` states on the orbit; same for `H_m` and the
+checkpoint weight `b_0 + 1`. This is a one-line argument and it retroactively
+explains the whole family of failed labels below — parity, decorated parity,
+defect masks, phase labels, block alphabets. What it does not rule out is an
+*injective* representation with cheap random access, which is what the remaining
+routes have to be.
+
 ## Data
 
 `B_L` for L = 4..46:
@@ -181,6 +262,17 @@ it happens at the smallest sizes, not asymptotically.
 
 Plus `B_60 = 7,640,649`, `B_64 = 22,789,705`, `B_66 = 74,827,985`,
 **`B_69 = 1,124,943`**, and `p_49 = 94,695,837`.
+
+The gap in the even family is filled by `B_48 = 115,151`, `B_50 = 439,773`,
+`B_52 = 1,527,249`, `B_54 = 5,193,987`, `B_56 = 926,585`, `B_58 = 7,763,913`
+and `B_62 = 4,745,923` (`p_L = B_L + L - 1` throughout). Note `B_56 < B_54` and
+`B_62 < B_58`: inside one parity the sequence is not monotone either, so a
+same-parity least-squares fit is being run through a sawtooth.
+
+**Complete cycle censuses**, by direct enumeration of `C_n`: `A_11` has 1,218
+cycles, `A_12` 3,452, `A_13` 8,978 (559 distinct lengths, max 1,874), `A_14`
+24,858 (948 distinct, min 3, max 2,945), `A_15` 66,111 (1,661 distinct, min 3,
+max 4,962).
 
 **`B_L` is not smooth.** Almost every value has a prime factor above
 `sqrt(B_L)`; `B_15 = 211`, `B_22 = B_24 = 919`, `B_29 = 11251`, `B_30 = 4673`,
@@ -266,6 +358,62 @@ L = 44 plus L = 69:
 Every cut that carries the law has `8 | n`, but that is not sufficient, and no
 sharper characterization survived. Treat `43` as a measured fact about the
 `56|13` cut of L = 69, not as an instance of a general law.
+
+**The boundary-event cocycle explains it.** Cut at `n` and let the last prefix
+cell drive the tail: its value at the moment its gate fires is 0, 1 or `>= 2`,
+which applies `A`, `A.Q` (delete the tail root) or `A.I` (inject one unit) to
+the tail. In the rotating frame `rho_t = A^{-t} T_t` the ordinary `A` sweeps
+vanish entirely and only deletion and injection events move the state, so for a
+tail on the canonical cycle the rotating phase `d_t = phi_t - t (mod p_s)` is
+piecewise constant. At L = 69, `n = 56` the 179,534 on-cycle clean checkpoints
+fall into exactly **84 constant-`d` runs separated by 83 dirty excursions**, and
+erasing the no-op sweeps leaves only **four distinct event words**: length 64
+(x2, jump 30), 192 (x40, jump 39), 1,487 (x40, jump 14) and 89,214 (x1, jump
+123). The jump word is the palindrome
+
+    30, (14, 39)^20, 123, (39, 14)^20, 30
+
+with total 2,303 = 110 (mod 129). A palindromic jump word forces
+`d_i + d_{m-i} = d_0 + d_m` by partial-sum cancellation, which is the defect
+reflection; combined with the checkpoint-time identity
+`t_k + t_{N-k} = p_L - L + z(x_k)` and `p_69 - 69 = 62 (mod 129)` it gives
+
+    43 = 62 (checkpoint-time centre) + 110 (cocycle holonomy)   (mod 129),
+
+the first derivation of the constant with dynamical content in it. Both
+`n + B_s - 1` and `n - s` remain numerology; this is not. What is *not* proved
+is why the prefix generates a palindromic 83-excursion word in the first place —
+that is still an exhaustive computation.
+
+The short and long excursions are literal subset reset words: applied to all
+129 phases, the short word sends `alpha + {0,1,3,5}` to `alpha + 42` and the
+long one sends `alpha + {0,1,3,5,7,22,52}` to `alpha + 19`, in both cases
+because the surviving states come to differ only in their root and one deletion
+event erases that. The real orbit enters the long reset at `alpha + 5`, and
+after the outer step 780 that admitted set is `{18,19,21,23,25,40,70}` — which
+contains the uniquely closing phase 23 and the near-misses 19, 21, 25. So the
+reset word explains the *basin*; the prefix dynamics still does the final
+selection.
+
+The same 84 intervals show up as state synchronization: over 753,124 of the
+1,125,011 sweeps (66.9%) cell 55 is zero and cells 56..68 sit on the canonical
+`A_13` cycle, in exactly 84 maximal runs. Truncating each run to whole `11 x 129`
+clocks gives the 514 complete `A_13` clocks (729,366 sweeps, 64.8%) that a
+cross-dimensional parse of the L = 37 itinerary sees as one repeated tile. The
+tree recursion above says why the tail is autonomous at all: the boundary gate
+sits at a leaf, so the tail is a separate recursive `F`-call.
+
+`Xi`-sections make the same structure visible at a third resolution. At L = 69
+the canonical `Xi`-weight word has period 29,265 and the exact distribution
+
+    13^64, 21^11680, 28^11680, 31^5758, 77^2, 379^40, 2597^40, 254167^1,
+
+summing to `p_69`; the 40 + 40 + 1 rare weights are the envelopes of the 40 + 40
++ 1 dirty excursions. At this length, and only at this length among those
+tested, membership of the `Xi`-section is a five-symbol local pattern: `UDDDD`
+in the height word, with 0 false positives and 0 false negatives over the whole
+orbit. At L = 31, 35, 37, 43, 45 the pattern still implies section membership
+but catches only 5%, 13%, 1.4%, 8% and 15% of it.
 
 **The obvious proof of the law is dead.** The natural route was to combine the
 already-proven telescoping identity `t_k + t_{N-k} = p_L - L + z(x_k)` with phase
@@ -393,6 +541,44 @@ Do not retry these without genuinely new information.
   bound holds, but the rule is explicit, so it proves nothing.
 - **Compressing the L = 69 separator word** — linear complexity 2,390-2,394 out
   of 2,394.
+- **Polynomial-size grammars for the itinerary** — the exact LZ78 phrase count
+  `g` of the final-descent `U/F/D` word is a real compression (0.47% of the word
+  at L = 66, well under the `1/log N` a random word would give) but it is *not*
+  polynomial in L. Over the whole even family L = 30..66, `g/L^3` ranges from
+  0.0099 at L = 44 to 1.2235 at L = 66 — a 124x spread, and not monotone.
+  Regressing gives `log g = 0.684 log p + 0.17` with `R^2 = 0.956`, against
+  `R^2 = 0.80` for the best power of L; that is `g ~ p^0.68 ~ 1.19^L`.
+  Exponential with a smaller base is still exponential. The `g ~ 1.224 L^3`
+  reading is a one-point fit at the largest measured L, which is also the
+  largest `p` — rule 3 in a new costume.
+- **2-automatic coordinate formulas** — the retraction indicator has exactly one
+  1 per period, so its 2-kernel is at least the odd part of `p_L` (57,659 at
+  L = 31, and all of `p_L` when `p_L` is odd). The failure of `F_2` linear
+  recurrences was not the linearity.
+- **Finite-state wreath recursion on plane trees** — the natural one-hole
+  version is dead by measurement: with branch gadgets `F` and `C` and two probe
+  forests, all `2^d` contexts of depth `d` give distinct output-degree responses
+  for every `d <= 15`, and the residual-section count over one-hole contexts of
+  size `h` grows 1, 2, 4, 8, 17, 39, 102, 295, 912, 2,945, 9,798 (these two
+  censuses are reported, not independently reproduced here). What survives is
+  only the narrower hope that the canonical orbit visits a small *unary-spine*
+  sub-language of contexts.
+- **Odd = even ternary system plus O(1) defects** — with `delta(x)` the minimum
+  number of bad pairs over all choices of one unmatched even cell, the canonical
+  orbit reaches `max delta = (L-15)/2` exactly, for every odd L = 17..45. The
+  defect count is extensive: it is a defect gas, not one moving particle. (The
+  first state attaining the maximum always has an exact 16-cell staggered even
+  core and a wholly defective suffix — the 16-barrier from a new direction. At
+  L = 69 `max delta = 7`, mean 1.4478, and 23.8% of sweeps have `delta = 0`,
+  which is the 56-cell rigidity again.)
+- **Low-degree polynomial invariants** — through degree 3 the invariant space is
+  reported to be exactly `1, S, S^2, S^3` in the total mass `S`. Finite evidence
+  only, and not reproduced here.
+- **Expanding the recursive lift on demand** — following `Xi`/`Omega` and fully
+  expanding every touched lower-dimensional cycle is reported to cost 1.5x,
+  4.5x, 12.9x, 24.9x, 67.5x the target period at physical L = 22, 24, 28, 30,
+  32. The lift is cheap only in batch over a base cycle, and the canonical orbit
+  does not stay over few base cycles.
 
 An unverified but plausible reframing, with no algorithm attached: read the
 sweep as a **"frozen-top row whirl"** on staircase partitions (order ideals of
@@ -431,6 +617,16 @@ sparse-perturbation hope.
    deliverable.** When checking one, confirm that tropical, the `N(t)` scale
    argument, the bulk-period correspondence, the 112 template, the ~2% odds, and
    the AVX2 work are all present.
+6. **Never accept a `poly(L)` reading of a quantity that was only measured at a
+   handful of lengths — regress it against `p_L` as well.** Everything here that
+   looks polynomial in L at the largest measured length has turned out to be a
+   power of `p_L`. The check costs one extra fit and has now caught the same
+   error twice (`N(t)`, and the LZ78 grammar size).
+7. **A compressed representation that has to be built by reading the orbit has
+   not beaten anything.** Answering a query over a grammar in `o(w)` symbol
+   operations is only a speedup if the grammar itself can be constructed in
+   `o(p_L)`. This is rule 1 wearing a different hat, and it is easy to miss
+   because the measured query speedup is real.
 
 ## Engineering, which is the actual deliverable
 
@@ -487,23 +683,37 @@ subexponential algorithm exists, are open. Why L = 69 is tiny is diagnosed
 dynamically (13-cell phase resonance, phase 23 uniquely closing) but not derived
 algebraically.
 
-Odds of a subexponential algorithm existing and being findable from here: **~2%**,
-with one route left — derive the growth bases, which needs an idea rather than a
-measurement. The `R_r` renormalization is the first exact state-level macro in
-the project and it sharpened the picture considerably, but it did not move that
-number: its reduced orbit has the same length (`M_r ~ p_L/469`), its own
-suggested recursion is measured dead, and the interface result says only what an
-exact interface *cannot* be (any bounded alphabet independent of r). The route it
-pointed at instead — state as (cycle identifier, phase) — is now measured dead
-too, so the count of surviving routes went down rather than up.
+Odds of a subexponential algorithm existing and being findable from here:
+**~2%**, and it has stayed there through every round. What has changed is that
+the *structural* position is now much better than the algorithmic one. The
+project now has a complete recursive lift `A_n -> A_{n+1}` with a seven-state
+local carrier and `w < 3p`, an even-sector version with `w < 4p`, a two-line
+reversible recursion for one whole sweep on plane trees, an explicit inverse,
+and a one-line theorem saying no merging quotient can ever work. None of that
+has produced a program that beats simulating the orbit, and two of the three
+things that looked like it might have — a polynomial-size itinerary grammar and
+sub-weight grammar evaluation — do not survive audit (see rules 6 and 7).
 
-Open sub-problems, if anyone wants them: prove the phase-reflection law
-abstractly — the phase-lock route is now closed, so this needs a new mechanism —
-and find a cheap `P -> P^dagger` prefix map (without it, L = 69 is diagnosed but
-not explained); characterize which cuts `n|s` carry the constant `n - s`, since
-it is neither all clean cuts nor exactly the stem set; and for the general
-fast-forward, the only surviving target named is a nonlinear defect-cocycle
-representation closed under composition.
+The one route that keeps being pointed at is: an *injective* representation with
+cheap random access, in the spirit of modular exponentiation rather than of a
+smaller state. That is the only shape the no-go leaves open. Nothing measured so
+far suggests one exists here: at L = 43 the projection of the canonical orbit to
+`C_42` is injective on 2,232,313 of 2,232,314 phases, a `K`-step changes ~0.58N
+recursive coordinates, and both the `Xi` and `Omega` recursions are 12-67x
+*slower* than direct simulation when actually run.
+
+Open sub-problems, if anyone wants them: prove the canonical `Xi`-weight
+palindrome — it holds for every L = 3..46 and for 69, is false for generic
+`Xi`-cycles, and would be the first proof of a reflection law here; prove the
+84-excursion palindrome at L = 69, which is what the `43 = 62 + 110`
+decomposition rests on; prove the global height reflection
+`delta_t = -delta_{p_L - 2L + 1 - t}`, verified at every L tested to 69 and
+cheap to state; find a cheap `P -> P^dagger` prefix map (without it, L = 69 is
+diagnosed but not explained); characterize which cuts `n|s` carry the constant
+`n - s`, since it is neither all clean cuts nor exactly the stem set; and
+measure whether the residual tree sections reached from the canonical chain
+form a `exp(o(n))` sub-language, which is the last unmeasured thing the tree
+recursion asks for.
 
 **Recommendation on record: treat the research thread as closed and take the
 AVX2 hot loop as the deliverable.**
