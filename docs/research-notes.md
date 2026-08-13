@@ -568,7 +568,7 @@ first escapes at `e_16 = 54`, i.e. `U || Z_15`, so escape-equals-closure is
 forced. It is `O(L)` instead of `O(L^2)`, but removes only the last `O(L)`
 checkpoints.
 
-## Round 27: what carries the L = 69 excursion palindrome
+## Rounds 27-29: what carries the L = 69 excursion palindrome
 
 The last L = 69 conjecture is the 84-excursion palindrome that `43 = 62 + 110`
 rests on. The reversor proves the canonical height and exceptional-ECO
@@ -620,6 +620,63 @@ So the mechanism is identified: **the excursion palindrome is the proved
 correspondence.** It is not yet a proof — the correspondence is exact on 79-82
 of 83, and closing the residue is the remaining work. Note also this is one
 length; nothing here has been checked at another `n|s` cut.
+
+**Round 29 correction: that conclusion was overdrawn.** The rare-gap
+correspondence at L = 69 is real as a correspondence, but it is *not* what
+carries the palindrome. Checked at the other `56|s` cuts with round 24's run
+counts (harness `research/audit/r29_cuts.c`, memory-lean rewrite that stores
+event lists only, so a 73M-sweep orbit fits in 3 GB):
+
+| L  | cut   | excursions | jump palindrome | R24 constants | rare-gap overlap |
+|----|-------|-----------:|-----------------|---------------|------------------|
+| 64 | 56\|8  | 933       | **fails** 383/933 | {0,6,18,20} | 75/933 unique    |
+| 68 | 56\|12 | 47        | 47/47           | {10}          | **0/47** (46 none) |
+| 69 | 56\|13 | 83        | 83/83           | {43}          | 82/83            |
+| 70 | 56\|14 | 229       | 229/229         | {42}          | 0/229            |
+
+At L = 68 a threshold even exists making rare-gap and excursion *counts* match
+(47 = 47 at w > 11207) and the overlap test still returns zero — a count match
+alone is worthless, which is Rule 6's cousin. The L = 69 containment is an
+accident of its extreme gap structure.
+
+**The actual mechanism is a defect-sum law, and it is a two-line derivation.**
+Subtract the round-14 time identity `t_k + t_{N-k} = p_L - L + z(x_k)` from the
+round-15 reflection law `phi_k + phi_{N-k} = z(x_k) + C` (single constant):
+
+    d_k + d_{N-k}  =  C - (p_L - L)   (mod p_s),   d_k = phi_k - t_k,
+
+constant over clean reflected pairs, k the *global* checkpoint index. A
+constant defect-sum maps constant-`d` runs to constant-`d` runs reversed,
+boundaries to boundaries, and reflected jumps satisfy
+`(K - d_e) - (K - d_{e+1}) = jm[e]` — the jump palindrome. Measured:
+
+| L  | predicted `C - (p_L - L)` | observed mode        | off-mode pairs |
+|----|---------------------------|----------------------|----------------|
+| 68 | `10 - 14 ≡ 30` (mod 34)   | 30 on 176,586/176,587 | the `k=0` self-pair |
+| 69 | `43 - 62 ≡ 110` (mod 129) | 110 on 178,354/178,355 | the `k=0` self-pair |
+| 70 | `42 - 74 ≡ 166` (mod 198) | 166 on 185,166/185,167 | the `k=0` self-pair |
+| 64 | no single `C` exists      | 5 values, mode 24 at 99.992% | 77 real violations |
+
+The L = 69 sum 110 is exactly the round-16 holonomy (`43 = 62 + 110` was this
+law read backwards). And L = 64 is the exact contrapositive: 77 violated pairs
+out of 987K scramble 550 of 933 palindrome positions, because one violation
+inside a run shifts every later boundary — the palindrome is brittle exactly as
+the derivation predicts.
+
+**Status change.** The 84-excursion palindrome at L = 69 is no longer an
+independent conjecture: it is a corollary of (a) the round-15 single-constant
+phase-reflection law (still open) and (b) the round-14 time identity (proved by
+telescoping, conditional on the checkpoint-gap palindrome). The open problem is
+now solely: *prove the single-constant reflection law, and characterize when
+the constant is unique* — one constant at 68/69/70, four at 64. Loose ends kept
+honest: excursion counts match round 24 exactly at 68/69/70 but give 934 runs
+vs their 937 at L = 64 (definition wrinkle at off-cycle interruptions, not
+chased); the derivation needs both pair members clean, and 0.3-3% of clean
+checkpoints are orphaned by off-cycle partners — at 68/69/70 this visibly does
+not disturb the boundary structure, but the sketch is not yet watertight there.
+Also confirmed in passing: the exceptional-edge set is `sigma`-invariant at
+every length tested, now including 12,119,831 of 12,119,831 edges at L = 70 —
+a large-scale confirmation of the reversor theorem.
 
 ## Dead ends
 
