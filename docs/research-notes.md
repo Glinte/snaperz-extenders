@@ -792,7 +792,16 @@ Do not retry these without genuinely new information.
   are essentially all distinct (115,314 of 115,318 at L = 31).
 - **Polynomial-dimensional `F_2` linearization** — the linear complexity of
   `(A^t E)_0 mod 2` is 3,753 / 11,278 / 115,318 / 201,661 for L = 25/29/31/35,
-  i.e. exactly `p_L`.
+  i.e. exactly `p_L`. **Extended to every characteristic** (2026-08-13,
+  `research/audit/r32_lcq.py`): a d-dimensional linear representation over
+  *any* field of characteristic 0 would force an order-d recurrence on the
+  integer sequence `(x_t)_0`, hence mod almost every prime; Berlekamp-Massey
+  on that sequence gives `LC mod 997 = p_L` **exactly** at every tested
+  L = 13..22 (likewise mod 101). So the linear route is closed over all
+  fields, not just `F_2`. Pleasing cross-check: `LC mod 2 = 2` for even L —
+  the mod-2 sequence of coordinate 0 is precisely the alternating sector bit,
+  so the only linear structure in the orbit over any field is the one
+  affinely-readable phase bit of the r31 entry. The instruments agree.
 - **Affine-region skipping** — branch vectors are 86-95% distinct with **0**
   consecutive repeats.
 - **Independent recursion over root subtrees** — `G_m` fails to preserve the
