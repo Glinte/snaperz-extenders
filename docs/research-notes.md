@@ -251,6 +251,52 @@ defect masks, phase labels, block alphabets. What it does not rule out is an
 *injective* representation with cheap random access, which is what the remaining
 routes have to be.
 
+**The pointed reversor `E_n`, and the two reflection conjectures it closes.**
+There is an explicit, recursively computable involution `E_n : C_n -> C_n` with
+
+    E_n^2 = id,     E_n A_n = A_n^{-1} E_n,     h(E_n x) = h(x).
+
+It is built from the complete ECO lift, by induction on the fibre coordinate:
+
+    E_{n+1}(t, r) = ( E_n(A_n t),     r    )   if r <= h(A_n t),
+                    ( E_n(Phat_n(t)), h(t) )   if r = h(t), h(A_n t) = h(t) - 1
+
+with `Phat_n(t)` the gates strictly before the last positive coordinate — the
+exceptional top-fibre edge the original last-peak lemma excluded. The two cases
+are exhaustive, and the fibre coordinate is never touched, so height is
+preserved and `E_n` costs `O(n^2)` with no reference to `p_L` or to phase.
+
+Height preservation is the whole content: `R_n` is the unique state of height
+`n`, so `E_n(R_n) = R_n`, hence `E_n(A_n^s R_n) = A_n^{-s} R_n`. That gives, as
+theorems rather than measurements:
+
+- **global height reflection** `delta_t = -delta_{p_L - 2L + 1 - t}`, and in the
+  stronger state-level form `E_L(A_L^s R_L) = A_L^{-s} R_L`;
+- **the canonical `Xi`-weight palindrome** `w_i = w_{q-1-i}`, via `e_s = e_{-s}`
+  on the exceptional-edge indicator — the canonical cycle self-pairs because
+  `R_n` is fixed, which is also why *generic* `Xi`-cycles need not be
+  palindromic;
+- **dihedral pairing of every cycle** of `A_n`, not just the canonical one.
+
+Audited independently in `research/audit/r26_reversor.py`, rebuilt from `core.A`
+and the round-18 `lam`/`unlam`/`P` rather than transcribed: exhaustive over every
+Catalan state to n = 12 (208,012 states), 0 failures on closure, involution,
+conjugation, height preservation, `E(R) = R`, and canonical reflection. Cycle
+pairing at n = 12 is 3,452 cycles, 2,702 self-reversing, 750 in 375 reversed
+pairs. Compare the "global palindrome involution" dead end, which this does
+*not* contradict — see that entry.
+
+**`eps_L` is a midpoint observable.** Reflection pairs every non-fixed phase, so
+the winner bit is decided at the one other fixed point of `E_L`:
+
+    eps_L = 1  iff  p_L is even and h(A_L^{p_L/2} R_L) = 1,
+
+equivalently `T_L = 2 p_L - L + 1` in that case and `p_L - L + 1` otherwise. An
+odd canonical period can therefore never have `eps_L = 1`. Checked against the
+community `T_L` table for L = 2..46: 45 of 45 lengths, 0 mismatches, and the
+criterion independently regenerates `eps_L = 1` exactly at
+L = 2, 4, 6, 12, 20, 21, 41.
+
 ## Data
 
 `B_L` for L = 4..46:
@@ -269,6 +315,33 @@ and `B_62 = 4,745,923` (`p_L = B_L + L - 1` throughout). Note `B_56 < B_54` and
 `B_62 < B_58`: inside one parity the sequence is not monotone either, so a
 same-parity least-squares fit is being run through a sawtooth.
 
+**Data sources.** Everything above was computed here. There is also a community
+pulse-count table maintained by the extender-hunting group, which records `T_L`
+(not `B_L`) for the P = 12 column and runs much further: every `T_L` for
+L <= 96, and evens through **L = 136**, 116 values in all. Export it as CSV via
+`/export?format=csv` on the Google Sheets id
+`1TsWICwHCjPV0JRmxDnU5vnZZ8W_uuXsN2pIdI00WaHc`.
+
+It is worth trusting. Over the 54 lengths where it overlaps this ledger it has
+**0 mismatches**, and it independently reproduces the `eps_L = 1` set
+{4, 6, 12, 20, 21, 41} via `T_L = 2B_L + L - 1`. The two sources were built from
+different code, so this is real mutual validation.
+
+Two cautions. The sheet warns that its AVX loop detection can return multiples
+of the true value (factors of 4, 8, 15.5, 16, 31 observed) — but that does *not*
+explain the upward scatter in the P = 12 column: `L = 54` and `L = 66` sit 6.1x
+and 7.4x above the even trend and both match this ledger's own C core exactly,
+so that scatter is intrinsic. Second, the other eleven columns (16 gt through
+56 gt period) are a different regime this project has never studied — the whole
+analysis here is P = 12 — and most of their entries are `loops N`,
+i.e. non-terminating.
+
+Against a same-parity log-linear trend over 101 lengths, **L = 69 is the only
+real outlier**: z = -4.99, where the next largest deviations are L = 110 at
+-2.50 and L = 72 at -2.09. Its "66x below `B_66`" description understates it;
+against the local trend it is ~3 orders of magnitude low and nothing else in
+the extended table is comparable.
+
 **Complete cycle censuses**, by direct enumeration of `C_n`: `A_11` has 1,218
 cycles, `A_12` 3,452, `A_13` 8,978 (559 distinct lengths, max 1,874), `A_14`
 24,858 (948 distinct, min 3, max 2,945), `A_15` 66,111 (1,661 distinct, min 3,
@@ -280,16 +353,38 @@ max 4,962).
 *not* an lcm of small independent periods, which kills the shape of every
 decomposition route.
 
-**Parity separation is robust; two distinct growth bases are not.** Odd `B_L`
-dwarfs even at the same `L` (`B_43 = 2,232,272` vs `B_44 = 38,513`, 58x). But
-least-squares on `log B_L` gives odd 1.3575 (L >= 16) / 1.3553 (L >= 24) against
-even 1.2004 / 1.1762 — while adding `B_60/64/66` pushes the even base to
-**1.3471** over L = 40..66. The fit moves by ~0.15 with the window, and a common
-base with different constants is not excluded by data to L = 46. **Distrust any
-quoted pair** (1.37/1.23, 1.42/1.23, ...); short-window fits at L <= 44 keep
-re-endorsing them and that is a documented artifact. Mean checkpoint gap is ~4.1
-for both parities, so odd extenders are not slow per checkpoint — they visit
-more checkpoints.
+**Parity separation is robust, and the two growth slopes are now distinct.**
+Odd `T_L` dwarfs even at the same `L` (`T_43 = 2,232,272` vs `T_44 = 38,513`,
+58x). This entry previously said two bases were *not* supported, because
+least-squares on data to L = 46 moved by ~0.15 with the window — odd 1.3575
+(L >= 16) / 1.3553 (L >= 24) against even 1.2004 / 1.1762, while `B_60/64/66`
+pushed the even base to 1.3471 over L = 40..66, which made a common base with
+different constants look admissible.
+
+The community `T_L` table (see Data sources) settles it. With evens to L = 136
+and odds to L = 95:
+
+| window   | parity | base       | 95% CI           | R^2  |  n |
+|----------|--------|------------|------------------|------|----|
+| 16..136  | even   | **1.2281** | [1.2033, 1.2534] | 0.96 | 61 |
+| 16..96   | odd    | **1.3774** | [1.3442, 1.4114] | 0.95 | 40 |
+
+Slope difference `0.1147 +- 0.0128`, **t = 9.0**; a common base is rejected. The
+even base is stable in every window from L = 40 up (1.2268 +- 0.0118 over
+L = 40..136) — the old 1.3471 was a short-window artifact, exactly as this entry
+suspected. Fits are on `T_L`, so entries with `eps_L = 1` contribute
+`2B_L + L - 1`; that is a `<= log 2` additive wobble, biasing the slope by
+`<= 0.007` over these windows. **Different finite-range slopes: settled.
+Different asymptotic bases: still conjectural.** Mean checkpoint gap is ~4.1 for
+both parities, so odd extenders are not slow per checkpoint — they visit more
+checkpoints.
+
+The normalized exponents are suggestively close but do **not** agree: against
+each sector's own state space (odd Catalan `4^L`, even Fuss-Catalan `2.598^L`),
+`log(1.3774)/log 4 = 0.2310` and `log(1.2281)/log 2.598 = 0.2152`, 7% apart. If
+those were equal the parity gap would be a pure state-space-size effect. They
+are not, and this is the shape of numerology that has been buried twice here, so
+it is a target to test, not a result.
 
 **`E_L` is not on a distinguished orbit.** At L = 13: 742,900 states in 8,978
 cycles, 559 distinct lengths, max 1874, mean 82.7, and `p_13 = 129` is
@@ -505,12 +600,32 @@ Do not retry these without genuinely new information.
   `(1,0,2)`, and defects never re-localize — they merge instead of passing
   through. Mechanism: the mean-one vacuum never resets the carrier.
 - **Yang-Baxter / transvections** — real algebra, no explanatory value.
-- **Global palindrome involution `J A J = A^{-1}`** — vacuous as stated, since
+- **`Xi`-weight multiplicity counting** — the idea was that `p_L = sum w` makes
+  the period a dot product of a *weight alphabet* against a multiplicity vector,
+  which is a counting problem rather than a simulation problem and so is not
+  touched by the no-merging theorem. It dies on the alphabet size. Distinct
+  `Xi`-weights `d(L)` over L = 16..46 fit `d ~ p_L^0.486` (R^2 = 0.80) against
+  R^2 = 0.46 for `1.107^L` and 0.48 for `L^3.10` — real compression, still
+  exponential, and the same signature as the LZ78 grammar's `p^0.68`. Rule 6
+  again. The seductive datum was L = 69's 8-symbol alphabet
+  (`13^64 21^11680 28^11680 31^5758 77^2 379^40 2597^40 254167^1`, summing
+  exactly to `p_69 = 1,125,011`); L = 43 has 271 distinct weights at a
+  comparable period. **That was generalizing from the one length this ledger
+  documents as unrepresentative** — a mistake worth naming, because the L = 69
+  distributions are the prettiest objects in the file and will tempt again.
+  Related: `Xi_period ~ p_L^0.818`, so the section itself only compresses the
+  orbit by `p^0.18`. Swept via `research/build/r18_xi L --dist`, L = 4..46.
+- **Global palindrome involution `J A J = A^{-1}`** — vacuous *as stated*, since
   every permutation is strongly real; and preserving every prefix-reset set needs
   one common centre, which fails (at L = 16, `S_L` forces c = 0 but `S_1` gives
   450, and `S_9` has no centre at all). The palindromes are real but live in
   *induced* time, one involution per level: per-level centres at L = 16,
   k = 1..8 are 450, 448, 448, 442, 428, 428, 428, 428, with gaps `2^j - 2`.
+  **Do not use this entry to bury the reversor `E_n` (Settled theory).** That
+  map is not this claim: the content there is *height preservation*, which is
+  what forces `E_n(R_n) = R_n` and makes the reflection non-trivial. Bare
+  existence of a conjugating involution is what is vacuous; a height-preserving
+  one is not, and it is proved.
 - **lcm / factorization / OEIS lookups.**
 - **Sparse perturbation of rowmotion** — rotating-frame states `O^{-t} A^t(E)`
   are essentially all distinct (115,314 of 115,318 at L = 31).
@@ -678,21 +793,24 @@ sparse-perturbation hope.
 ## Status
 
 Termination, correctness, and the physical -> Catalan reduction are solved on
-paper but not formalized. Why the parities differ, and whether any
-subexponential algorithm exists, are open. Why L = 69 is tiny is diagnosed
-dynamically (13-cell phase resonance, phase 23 uniquely closing) but not derived
-algebraically.
+paper but not formalized. *That* the parities differ is now settled — two
+distinct finite-range slopes, `t = 9.0` (see Data) — but *why* they differ is
+open, as is whether any subexponential algorithm exists. Why L = 69 is tiny is
+diagnosed dynamically (13-cell phase resonance, phase 23 uniquely closing) but
+not derived algebraically.
 
 Odds of a subexponential algorithm existing and being findable from here:
-**~2%**, and it has stayed there through every round. What has changed is that
-the *structural* position is now much better than the algorithmic one. The
-project now has a complete recursive lift `A_n -> A_{n+1}` with a seven-state
-local carrier and `w < 3p`, an even-sector version with `w < 4p`, a two-line
-reversible recursion for one whole sweep on plane trees, an explicit inverse,
-and a one-line theorem saying no merging quotient can ever work. None of that
-has produced a program that beats simulating the orbit, and two of the three
-things that looked like it might have — a polynomial-size itinerary grammar and
-sub-weight grammar evaluation — do not survive audit (see rules 6 and 7).
+**~1-2%**, essentially unmoved through every round. What has changed is that the
+*structural* position is now much better than the algorithmic one. The project
+now has a complete recursive lift `A_n -> A_{n+1}` with a seven-state local
+carrier and `w < 3p`, an even-sector version with `w < 4p`, a two-line
+reversible recursion for one whole sweep on plane trees, an explicit inverse, a
+one-line theorem saying no merging quotient can ever work, and a height-
+preserving reversor that turns the two standing reflection conjectures into
+theorems. None of that has produced a program that beats simulating the orbit,
+and three of the things that looked like they might have — a polynomial-size
+itinerary grammar, sub-weight grammar evaluation, and `Xi`-weight multiplicity
+counting — do not survive audit (see rules 6 and 7, and the dead-ends list).
 
 The one route that keeps being pointed at is: an *injective* representation with
 cheap random access, in the spirit of modular exponentiation rather than of a
@@ -702,18 +820,26 @@ far suggests one exists here: at L = 43 the projection of the canonical orbit to
 recursive coordinates, and both the `Xi` and `Omega` recursions are 12-67x
 *slower* than direct simulation when actually run.
 
-Open sub-problems, if anyone wants them: prove the canonical `Xi`-weight
-palindrome — it holds for every L = 3..46 and for 69, is false for generic
-`Xi`-cycles, and would be the first proof of a reflection law here; prove the
-84-excursion palindrome at L = 69, which is what the `43 = 62 + 110`
-decomposition rests on; prove the global height reflection
-`delta_t = -delta_{p_L - 2L + 1 - t}`, verified at every L tested to 69 and
-cheap to state; find a cheap `P -> P^dagger` prefix map (without it, L = 69 is
-diagnosed but not explained); characterize which cuts `n|s` carry the constant
-`n - s`, since it is neither all clean cuts nor exactly the stem set; and
-measure whether the residual tree sections reached from the canonical chain
-form a `exp(o(n))` sub-language, which is the last unmeasured thing the tree
-recursion asks for.
+Two of the open sub-problems this section used to list are now closed, both by
+the pointed reversor `E_n` (Settled theory): the canonical `Xi`-weight
+palindrome and the global height reflection
+`delta_t = -delta_{p_L - 2L + 1 - t}` are theorems, not measurements, and
+`eps_L` has an exact midpoint characterization. Neither buys any speed — `E_n`
+gives the state at the opposite canonical phase without knowing `p_L`, but not
+the *distance* between those phases, and at `O(L^2)` against `O(L)` for one
+sweep it cannot even halve the walk. The unique-marker obstruction is untouched.
+
+Still open, if anyone wants them: prove the 84-excursion palindrome at L = 69,
+which is what the `43 = 62 + 110` decomposition rests on — the reversor proves
+the canonical height and exceptional-ECO palindromes but does not yet act on the
+`56|13` clean-cut defect classification; find a cheap `P -> P^dagger` prefix map
+(without it, L = 69 is diagnosed but not explained); characterize which cuts
+`n|s` carry the constant `n - s`, since it is neither all clean cuts nor exactly
+the stem set; measure whether the residual tree sections reached from the
+canonical chain form a `exp(o(n))` sub-language, which is the last unmeasured
+thing the tree recursion asks for; and settle whether the two parity growth
+*bases* really differ asymptotically, now that the finite-range slopes are known
+to (see Data).
 
 **Recommendation on record: treat the research thread as closed and take the
 AVX2 hot loop as the deliverable.**
