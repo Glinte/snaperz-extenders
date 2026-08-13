@@ -841,6 +841,29 @@ Do not retry these without genuinely new information.
   materializes. Any subexponential attack needs a cheap operation *outside*
   the dihedral group; `D` above is the canonical candidate and is dead in
   state coordinates.
+- **Affine phase reading** (2026-08-13). A cheap phase-reader would be the
+  algorithm outright (`p = t(A^{-1} R) + 1`), and one bit is genuinely
+  readable: for even L the aligned/staggered sector is `t mod 2`. Measured how
+  deep it goes (`research/audit/r31_phaseread.py`): for each prime power
+  `q^k | p`, is the k-th base-q digit of `t` an `F_q`-affine functional of
+  O(L)-computable features (coordinate parities, zero/one indicators, pair
+  parities, good-pair indicators, the sector bit), conditionally on the lower
+  digits vanishing? Answer: **exactly one bit, ever.** Every even L reads
+  `t mod 2`; no L reads a second 2-adic digit; no odd L reads even the first;
+  no odd-prime digit (q = 3, 5, 7, 11, 13) is readable anywhere. The pure
+  2-power cases are decisive: `p_10 = 2^5` stops after digit 1, and at
+  `p_11 = 2^6` *nothing* is readable. Sharpest micro-fact: the L = 10
+  second-digit system has 16 states against 42 features — overparametrized —
+  and is still unsolvable, so the feature geometry on the even-phase states
+  specifically excludes the next digit. Caveat: the negative is relative to
+  the affine-over-features class; but that class does capture the one bit
+  that exists, and the `LC = p_L` result already killed the time-series
+  analogue. Together with the `D` entry above: the encoding question is now
+  squeezed from both sides — natural coordinates carry no doubling locality,
+  and phase digits are not affinely readable. What is left is a
+  representation where *composition* is cheap while neither states nor phases
+  are readable — modular-exponentiation-like in the strict sense — and
+  nothing measured points at one.
 - **Compressing the L = 69 separator word** — linear complexity 2,390-2,394 out
   of 2,394.
 - **Polynomial-size grammars for the itinerary** — the exact LZ78 phrase count
