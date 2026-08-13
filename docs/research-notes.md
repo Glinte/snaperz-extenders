@@ -550,6 +550,59 @@ first escapes at `e_16 = 54`, i.e. `U || Z_15`, so escape-equals-closure is
 forced. It is `O(L)` instead of `O(L^2)`, but removes only the last `O(L)`
 checkpoints.
 
+## Round 27: what carries the L = 69 excursion palindrome
+
+The last L = 69 conjecture is the 84-excursion palindrome that `43 = 62 + 110`
+rests on. The reversor proves the canonical height and exceptional-ECO
+palindromes but was not shown to reach the `56|13` defect classification. This
+round locates the mechanism. Harness `research/audit/r27_reflect.c`,
+`r27b_eco.c`, `r27c_bridge.c`.
+
+Rooted at `E_L`, the reversor acts on time as the involution
+
+    sigma(t) = (p_L - 2L + 2) - t   (mod p_L),
+
+the same centre the height reflection uses. Three findings, in order.
+
+**The `56|13` section is not `sigma`-invariant — not even slightly.** Of 268,128
+checkpoints, **0** have their `sigma`-partner a checkpoint; of 179,534 clean
+on-cycle checkpoints, **0**. So no proof can go through "the section is
+preserved", which is exactly why the reversor did not close this. Nor is it an
+interval reflection: excursion `e` maps onto its partner only up to an offset
+that is always **odd** and bounded by 29, and 76 of 83 partner lengths differ
+(by an even amount, up to 26).
+
+**The exceptional-ECO symmetry is exact here, with the state centre.** At
+L = 69 there are **29,265** exceptional edges — exactly the `Xi` period — and
+`e_s = e_{C-s}` holds on **29,265 of 29,265**, while the edge-centred variant
+`e_s = e_{C-1-s}` holds on **0**. Take `C = p_L - 2L + 2`. Deriving the induced
+map on gaps from that invariance rather than assuming a rooting gives `pi` well
+defined on all 29,265 gaps with `w_{pi(i)} = w_i` on **29,265 of 29,265** — the
+`Xi`-weight palindrome, independently confirmed at L = 69 in the correct
+rooting. (Assuming the `E_L` rooting instead gives a spurious 77/83; a rotated
+palindrome is not a palindrome, and that artifact is easy to walk into.)
+
+**The excursions are the rare gaps.** The multiplicities coincide exactly:
+
+    excursion jumps :  30^2    39^40    14^40    123^1      = 83
+    rare Xi weights :  77^2    379^40   2597^40  254167^1   = 83
+    common weights  :  13^64 + 21^11680 + 28^11680 + 31^5758 = 29,182 = 29,265 - 83
+
+Excursions contain almost no exceptional edges: they sit *inside* the 83 rare
+gaps. The correspondence (anchored at `b0`) is an order-preserving injection,
+the enclosing weight determines the jump single-valuedly
+(`13/77 -> 30`, `2597 -> 14`, `379 -> 39`, `254167 -> 123`), the rare gaps are
+closed under `pi` acting as `r -> 80 - r` on cyclic rank on all 83, and the
+excursion pairing `e <-> 82 - e` agrees with it on **79 of 83**. Anchoring by
+overlap instead, **82 of 83** excursions contain exactly one rare gap and one
+contains none.
+
+So the mechanism is identified: **the excursion palindrome is the proved
+`Xi`-weight palindrome transported through an excursion/rare-gap
+correspondence.** It is not yet a proof — the correspondence is exact on 79-82
+of 83, and closing the residue is the remaining work. Note also this is one
+length; nothing here has been checked at another `n|s` cut.
+
 ## Dead ends
 
 Do not retry these without genuinely new information.
