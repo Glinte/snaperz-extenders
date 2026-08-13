@@ -711,6 +711,45 @@ The open problem, sharpened: prove the single-constant reflection law where it
 holds, and explain why the tails s = 8, 10 (`p_s` = 30, 32) admit several
 constants while s = 4, 6, 12, 13, 14, 16 admit one.
 
+## Round 33: the checkpoint reversor, and the time identity unconditionalized
+
+The round-14 time identity `t_k + t_{N-k} = p_L - L + z(x_k)` was proved by
+telescoping *conditional on the checkpoint-gap palindrome*, which is itself
+unproved. The reversor gives a route that removes that conditionality. Define,
+on canonical-cycle checkpoints (with `z(E_L) = L`),
+
+    Phi(x) = A^(L-2+z(x)) . E(x).
+
+Then `Phi(E_L) = E_L` is a two-line computation on the terminal arc, and using
+`E A^w = A^-w E` plus the full-state form of the ledger fact `z(H(b)) = b_0`
+(namely `z(x_{k+1}) = tau_k`, which holds with its `b_0 = 0` edge case), the
+conjugation `Phi H = H^{-1} Phi` reduces algebraically to two pointwise lemmas:
+
+- **(A)** `Phi` maps checkpoints to checkpoints, i.e. `(Phi x)_0 = 1`;
+- **(B)** `z(Phi x) = z(x)`.
+
+Given (A), (B) and the anchor, `Phi(x_k) = H^{-k}(E_L) = x_{N-k}` — which *is*
+the time identity, with the gap palindrome nowhere in the argument. Verified
+end to end at every walkable L = 8..22 (`research/audit/r33_bridge.py`): the
+identity itself (previously verified only at L = 69), `z = tau` with edge
+cases, (A), (B), the conjugation, and the anchor — all with zero failures, up
+to 448 checkpoints per cycle.
+
+The dependency chain for the L = 69 story now reads:
+
+    excursion palindrome
+      <= defect-sum law                        [proved, given the two inputs]
+      <= single-constant reflection law        [open]
+       + time identity
+           <= Phi-conjugation                  [algebra, this round]
+           <= (A), (B), z(H(b)) = b_0          [pointwise, verified, unproved]
+
+Every remaining unproved statement is now *pointwise structural* — exactly the
+kind the ECO recursion has proved before — rather than a global palindrome.
+Probed and negative: `(E x)_0` at checkpoints is not determined by `z(x)` (it
+is always odd for even L, another sector echo), so (A) does not fall to a
+one-line leading-coordinate law; it will need the recursion.
+
 ## Dead ends
 
 Do not retry these without genuinely new information.
