@@ -815,6 +815,32 @@ Do not retry these without genuinely new information.
 - **NP / ETH hardness** — the canonical input is unary `L -> T_L`, so it is
   sparse/tally and hardness would collapse classes. A black-box `Omega(T_L)`
   bound holds, but the rule is explicit, so it proves nothing.
+- **Double-and-add via the doubling map, in state coordinates** (2026-08-13).
+  The one algorithmic shape the no-merging theorem leaves open is an injective
+  representation with cheap random access, and its canonical concrete form is
+  the doubling map `D : x_t -> x_{2t mod p}` on the canonical cycle — if `D`
+  were poly(L)-computable from the state alone, double-and-add would give
+  `T_L` in `poly(L) log p`. Measured by prefix determinacy (the prefix length
+  `m*` forcing output coordinates for 99% of cycle states,
+  `research/audit/r30_doubling.py`, L = 14..22): `A` and `A^-1` force coord
+  `j` at `m* = j + 2` (lag 1, as the gate structure predicts); the reversor's
+  on-cycle action `t -> -t` sits at `m* ~ 6-11`, real intermediate locality,
+  which calibrates the metric as able to see cheap structure when it exists;
+  and **`D` and `T3` exactly match a uniformly random cycle permutation in
+  every cell** — they saturate at the singleton threshold, i.e. no output
+  coordinate is forced by anything short of the whole state. In the natural
+  coordinates the doubling map has *no* local structure at all. What this does
+  not close: a cheap `D` in some *other* injective encoding. That, precisely,
+  is now the algorithmic question — and note the dihedral ceiling below before
+  reading any symmetry result as progress toward it.
+- **Reading the reversor line as an algorithmic attack** — everything the
+  reversor gives (reflection law, defect-sum, all palindromes) lives in the
+  dihedral group `<A, E>`. Every element of that group is `A^k` or `E A^k`,
+  so the only cheap nontrivial move it contains is one fold of time in half:
+  a hard ceiling of 2x, and round 26 already noted even the 2x barely
+  materializes. Any subexponential attack needs a cheap operation *outside*
+  the dihedral group; `D` above is the canonical candidate and is dead in
+  state coordinates.
 - **Compressing the L = 69 separator word** — linear complexity 2,390-2,394 out
   of 2,394.
 - **Polynomial-size grammars for the itinerary** — the exact LZ78 phrase count
