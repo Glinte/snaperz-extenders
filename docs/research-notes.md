@@ -666,17 +666,50 @@ the derivation predicts.
 **Status change.** The 84-excursion palindrome at L = 69 is no longer an
 independent conjecture: it is a corollary of (a) the round-15 single-constant
 phase-reflection law (still open) and (b) the round-14 time identity (proved by
-telescoping, conditional on the checkpoint-gap palindrome). The open problem is
-now solely: *prove the single-constant reflection law, and characterize when
-the constant is unique* — one constant at 68/69/70, four at 64. Loose ends kept
+telescoping, conditional on the checkpoint-gap palindrome). Loose ends kept
 honest: excursion counts match round 24 exactly at 68/69/70 but give 934 runs
 vs their 937 at L = 64 (definition wrinkle at off-cycle interruptions, not
-chased); the derivation needs both pair members clean, and 0.3-3% of clean
-checkpoints are orphaned by off-cycle partners — at 68/69/70 this visibly does
-not disturb the boundary structure, but the sketch is not yet watertight there.
-Also confirmed in passing: the exceptional-edge set is `sigma`-invariant at
-every length tested, now including 12,119,831 of 12,119,831 edges at L = 70 —
-a large-scale confirmation of the reversor theorem.
+chased). Also confirmed in passing: the exceptional-edge set is
+`sigma`-invariant at every length tested, now including 12,119,831 of
+12,119,831 edges at L = 70 — a large-scale confirmation of the reversor
+theorem.
+
+**The full `56|s` census, and the two failure modes.** Every even length with a
+walkable orbit, same harness:
+
+| L  | s  | `p_s` | on-cycle clean | excursions | defect-sum values | palindrome |
+|----|----|------:|---------------:|-----------:|-------------------|------------|
+| 58 | 2  | 2     | 364,853        | 0          | —                 | trivial    |
+| 60 | 4  | 6     | 115            | 25         | 1 (`0`)           | 25/25      |
+| 62 | 6  | 14    | 32,221         | 356        | 1 (`2`)           | **346/356** |
+| 64 | 8  | 30    | 993,409        | 933        | **5**             | **383/933** |
+| 66 | 10 | 32    | 187,557        | 560        | **4**             | **230/560** |
+| 68 | 12 | 34    | 177,224        | 47         | 1 (`30`)          | 47/47      |
+| 69 | 13 | 129   | 179,534        | 83         | 1 (`110`)         | 83/83      |
+| 70 | 14 | 198   | 188,456        | 229        | 1 (`166`)         | 229/229    |
+| 72 | 16 | 466   | 177,976        | 57         | 1 (`266`)         | 57/57      |
+| 74 | 18 | 468   | 8              | 1          | —                 | trivial    |
+
+Two distinct failure modes, both now observed:
+
+- **Constant multiplicity** (L = 64, 66): the defect-sum takes 4-5 values and
+  the palindrome shatters. The failing tails are exactly s = 8, 10
+  (`p_s` = 30, 32); s = 4, 6, 12, 13, 14, 16 all carry a single constant.
+- **Orphan closure** (L = 62): a single constant is *not* sufficient. There the
+  off-cycle clean count dwarfs the on-cycle (1,084,430 vs 32,221, ~24% of
+  clean checkpoints orphaned), run boundaries land on orphaned positions, and
+  the palindrome fails 346/356 despite a perfectly single-valued defect-sum on
+  the pairs that do exist. The derivation therefore needs *both* hypotheses:
+  a unique constant, and reflection-closure of the clean set at run boundaries.
+
+Also new here: **L = 72 at `56|16` is completely regular** (single constant 266
+mod 466, palindrome 57/57) — round 24 saw L = 72 as a low-locking mess, but it
+was looking through the `64|8` cut; the cut was messy, not the length. And the
+s = 16 tail behaves despite the 16-barrier.
+
+The open problem, sharpened: prove the single-constant reflection law where it
+holds, and explain why the tails s = 8, 10 (`p_s` = 30, 32) admit several
+constants while s = 4, 6, 12, 13, 14, 16 admit one.
 
 ## Dead ends
 
