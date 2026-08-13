@@ -228,6 +228,24 @@ carry is a reversible push down a unary spine. Each local gate moves one
 subtree endpoint, `ord(T_i) = lcm(1, ..., n-i)`. Zero failures over all Catalan
 states to n = 11 and all pairs to combined size 10.
 
+**Why that `lcm` is not deep, and carries no arithmetic** — worth stating,
+because `lcm(1..k) = e^{psi(k)}` looks like the one arithmetic object in the
+file and invites importing machinery. It has a one-line proof. Gate `i`
+preserves `s = x_i + x_{i+1}` and touches only that pair. The prefix condition
+at `k = i-1` gives `P = sum_{j<i} x_j >= i`, so the constraint `x_i >= i+1-P`
+has lower bound at most 1; the admissible `x_i` are therefore `{1..s}` or
+`{0..s}`, and `x_i -> x_i - 1` for `x_i >= 2` with `1 -> s` *is* the `s`-cycle
+on `{1..s}`, with 0 fixed. Achievable pair sums are exactly `1..n-i` (and
+`2..n` at `i = 0`, since `x_0 + x_1 >= 2` forces no 1-cycles there). So every
+gate is a disjoint union of pair-sum rotations, one per
+(prefix, suffix, `s`) class, and the `lcm` is just "an interval of rotation
+lengths". Verified as stated — cycles are pair-sum rotations in every class,
+n = 4..9, all `i`. Consequently `ord(A_n)` has no clean form (`~10^135` at
+n = 12; n = 7 is `2^4 * 3^3 * 5 * 7^2 * 11 * 13 * 17 * 31`) and `p_n` is not
+arithmetic in `n` — `p_5 = 13`, `p_9 = 31`, `p_12 = 2 * 17` all have a prime
+factor above `n`, and `p_n | lcm(1..n)` fails from n = 5 on.
+Measured in `research/audit/r28_gatearith.py`.
+
 **Even lengths are 2-Dyck states.** Encoding the good pairs by
 `(0, 2d) -> (0, d)` and `(2c-1, 2d+1) -> (c, d)` is a bijection from the aligned
 sector onto the Fuss-Catalan states `sum b_i = n`, `2 sum_{i<=k} b_i >= k+1`,
