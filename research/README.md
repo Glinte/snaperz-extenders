@@ -205,3 +205,19 @@ The recursive-lift audit adds:
 The Lean formalization lives in a separate repository. Its early attempts
 formalized a wrong, simplified transition and do not count toward anything
 claimed in the notes.
+
+## Half-cycle SIMD experiment
+
+- `audit/half_simd_test.cpp` compares finite forward/inverse wavefronts,
+  injection blocks and particle retiming against sequential scalar gates on
+  arbitrary states, including AVX2/AVX512 width and signed-byte mass boundaries.
+  It also compares complete scalar and SIMD half-cycle certificates at 17..44.
+- `audit/half_bench.cpp` verifies the physical count against `run_scalar` at
+  17..50, including both reflection meeting types and the length-50 certificate.
+  `simd` reports five-run medians against the existing wavefront at lengths
+  49, 50, 60, 64, 66 and 69, checking every result. Without AVX512, the baseline
+  above 64 is scalar; build with `-march=native` on an AVX512 machine to reproduce
+  the wide SIMD comparison. `66` compares all three implementations at 66.
+
+These use `src/blockless_half.h` and its SIMD kernels directly. See the top-level
+README for the measured speedups and implementation limits.

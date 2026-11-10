@@ -42,8 +42,46 @@ template<unsigned L> void bench()
   fflush(stdout);
 }
 
+template<unsigned L> void simd_bench()
+{
+  std::vector<double> half_times, old_times;
+  for (unsigned repeat = 0; repeat < 5; ++repeat)
+  {
+    // Alternate order to reduce systematic warm-up/frequency bias.
+    Result h, old;
+    auto half = [&]() {
+      auto start = Clock::now();
+      h = half::run(L).result;
+      half_times.push_back(std::chrono::duration<double>(Clock::now()-start).count());
+    };
+    auto baseline = [&]() {
+      auto start = Clock::now();
+      if constexpr (Config<L>::kFits) old = run_avx2<L>();
+#if SNAPERZ_BLOCKLESS_HAVE_AVX512
+      else old = wide::run<L>();
+#else
+      else old = run_scalar(L);
+#endif
+      old_times.push_back(std::chrono::duration<double>(Clock::now()-start).count());
+    };
+    if (repeat & 1) { half(); baseline(); } else { baseline(); half(); }
+    equal(h, old);
+  }
+  std::sort(half_times.begin(),half_times.end());
+  std::sort(old_times.begin(),old_times.end());
+  printf("L=%u median half=%.6fs baseline=%.6fs speedup=%.2fx (5 runs)\n",
+         L,half_times[2],old_times[2],old_times[2]/half_times[2]);
+  fflush(stdout);
+}
+
 int main(int argc, char** argv)
 {
+  if (argc > 1 && std::string(argv[1]) == "simd")
+  {
+    simd_bench<49>(); simd_bench<50>(); simd_bench<60>();
+    simd_bench<64>(); simd_bench<66>(); simd_bench<69>();
+    return 0;
+  }
   if (argc > 1 && std::string(argv[1]) == "66") { bench<66>(); return 0; }
   bool edge = false, vertex = false, odd = false, eps = false;
   for (unsigned n = 17; n <= 50; ++n)

@@ -78,41 +78,66 @@ odds of one being reachable from here are about 2%.
 `./build/blockless --half` opts into the exact half-cycle counter for L > 16.
 It uses the certified 16-coordinate reduction, stops at a reflection-fixed
 edge or vertex, reconstructs the weighted period with its endpoint correction,
-and obtains the physical parity by a short inverse rewind. The default counter
-is unchanged: the current scalar implementation of this algorithm beats the
-scalar reference, but loses to the SIMD wavefront.
+and obtains the physical parity by a short inverse rewind.
 
-Measured end-to-end seconds on an AMD Ryzen 5 PRO 215, compiled with
-`g++ -O3 -march=native -std=c++17` (individual runs, not stable performance
-thresholds):
+The reduced counter now vectorizes the 435-sweep blocks, tail sweeps, head
+injections, particle-retiming reflection and midpoint rewind. Its finite
+wavefront drains to a synchronous state at each checkpoint. For reflection,
+suffix sums travel along the inverse wavefront and select each particle at its
+required inverse time, avoiding a sequential reconstruction of all those rows.
+The scalar implementation remains available as `half::run<false>(L)` for checks.
 
-| Length | Half-cycle | Scalar | SIMD | Scalar speedup |
-| --- | ---: | ---: | ---: | ---: |
-| 49 | 3.313 | 11.380 | 0.417 | 3.43x |
-| 50 | 0.0121 | 0.0428 | 0.00198 | 3.53x |
-| 60 | 0.297 | 0.915 | 0.0337 | 3.09x |
-| 64 | 0.958 | 2.955 | 0.101 | 3.09x |
-| 66 | 3.239 | 9.824 | 0.506 | 3.03x |
+Measured end-to-end median seconds on an AMD Ryzen 5 PRO 215, compiled with
+`g++ -O3 -march=native -std=c++17`. Each row uses five runs pinned to CPU 2, alternating order,
+and checks the complete result against the existing counter:
 
-SIMD uses AVX2 through 64 and AVX512 at 66. Reflection construction costs
-quadratic work in residual width, and the family still performs its ordinary
-sweeps sequentially. Halving the family orbit therefore does not automatically
-halve the optimized simulator's runtime. This counts completion pulses; it
-does not produce an intermediate physical configuration for every pulse.
+| Length | SIMD half-cycle | Existing SIMD | Speedup |
+| --- | ---: | ---: | ---: |
+| 49 | 0.391 | 0.589 | 1.50x |
+| 50 | 0.00173 | 0.00249 | 1.44x |
+| 60 | 0.0331 | 0.0438 | 1.32x |
+| 64 | 0.104 | 0.135 | 1.30x |
+| 66 | 0.338 | 0.684 | 2.02x |
+| 69 | 0.00507 | 0.0103 | 2.04x |
 
-Reproduce the comparison with:
+The existing counter uses AVX2 through 64 and AVX512 at 66 and 69. These are
+machine-specific measurements on a shared, busy machine. An unpinned rerun
+ranged from 0.97x at length 64 to 1.67x at 69; scheduling and frequency effects
+matter, especially for short runs. The original scalar
+half-cycle prototype took about 3.24s at length 66. SIMD makes the theoretical
+saving useful against the already optimized baseline, although pipeline and
+reflection overhead prevent a universal 2x speedup.
+
+AVX2 handles up to 64 coordinates per reduced sweep; AVX512 extends that to
+128 where available. Both require mass <= 127 (including injections) to keep
+signed-byte arithmetic valid; larger inputs fall back to scalar operations.
+The reduced orbit has width and mass L-16, so all its operations fit AVX2
+through L=80, and AVX512 through L=143. The decoded physical midpoint can need
+wider registers or scalar fallback sooner. Wide-kernel correctness is checked
+at the boundaries; complete orbit timings above cover only the listed lengths.
+The default counter remains unchanged; select this implementation with `--half`.
+
+Reproduce the checks and comparisons with:
 
 ```bash
-make -C research build/half_bench
-./research/build/half_bench       # checks 17..50, times 49/50/60/64
-./research/build/half_bench 66    # compares all three counters at 66
+make -C research build/half_simd_test build/half_bench
+./research/build/half_simd_test  # arbitrary states, boundaries and scalar certificates
+./research/build/half_bench     # reference checks 17..50 and scalar/SIMD timing
+taskset -c 2 ./research/build/half_bench simd # five-run medians on an allowed CPU
+./research/build/half_bench 66   # all three counters at length 66
 ```
 
-The checks compare B, epsilon, period and physical pulses, exercise both meeting
-types, odd and even periods, and nonzero epsilon. The length-50 certificate is
-468 family steps, period 439822, rewind 15 and 439773 physical pulses.
+Tests cover forward/inverse blocks, injections, 16,641 reflection cases,
+register and mass boundaries, both meeting types, odd/even periods and nonzero
+epsilon. Native AVX512 and AVX2-only builds pass; address/undefined-behavior
+sanitizers pass with leak detection disabled for the tracing environment.
+The length-50 certificate remains 468 family steps, period 439822, rewind 15
+and 439773 physical pulses.
+
 The implementation follows the [half-cycle derivation](https://chatgpt.com/space/page_897a9c1bb6448191a5c9e9ebc112ff6a)
 and `family_reversal.py` from the accompanying subexponential research.
+This counts completion pulses; it does not produce an intermediate physical
+configuration for every pulse, and still traverses half the reduced orbit.
 
 ## Credit
 
