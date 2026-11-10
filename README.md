@@ -73,6 +73,47 @@ programs that check each claim are in [`research/`](research/README.md). The
 short version is that no subexponential algorithm was found and the estimated
 odds of one being reachable from here are about 2%.
 
+## Half-cycle counting (period 12)
+
+`./build/blockless --half` opts into the exact half-cycle counter for L > 16.
+It uses the certified 16-coordinate reduction, stops at a reflection-fixed
+edge or vertex, reconstructs the weighted period with its endpoint correction,
+and obtains the physical parity by a short inverse rewind. The default counter
+is unchanged: the current scalar implementation of this algorithm beats the
+scalar reference, but loses to the SIMD wavefront.
+
+Measured end-to-end seconds on an AMD Ryzen 5 PRO 215, compiled with
+`g++ -O3 -march=native -std=c++17` (individual runs, not stable performance
+thresholds):
+
+| Length | Half-cycle | Scalar | SIMD | Scalar speedup |
+| --- | ---: | ---: | ---: | ---: |
+| 49 | 3.313 | 11.380 | 0.417 | 3.43x |
+| 50 | 0.0121 | 0.0428 | 0.00198 | 3.53x |
+| 60 | 0.297 | 0.915 | 0.0337 | 3.09x |
+| 64 | 0.958 | 2.955 | 0.101 | 3.09x |
+| 66 | 3.239 | 9.824 | 0.506 | 3.03x |
+
+SIMD uses AVX2 through 64 and AVX512 at 66. Reflection construction costs
+quadratic work in residual width, and the family still performs its ordinary
+sweeps sequentially. Halving the family orbit therefore does not automatically
+halve the optimized simulator's runtime. This counts completion pulses; it
+does not produce an intermediate physical configuration for every pulse.
+
+Reproduce the comparison with:
+
+```bash
+make -C research build/half_bench
+./research/build/half_bench       # checks 17..50, times 49/50/60/64
+./research/build/half_bench 66    # compares all three counters at 66
+```
+
+The checks compare B, epsilon, period and physical pulses, exercise both meeting
+types, odd and even periods, and nonzero epsilon. The length-50 certificate is
+468 family steps, period 439822, rewind 15 and 439773 physical pulses.
+The implementation follows the [half-cycle derivation](https://chatgpt.com/space/page_897a9c1bb6448191a5c9e9ebc112ff6a)
+and `family_reversal.py` from the accompanying subexponential research.
+
 ## Credit
 
 Development into Snaperz extenders spans multiple years. If you played a role but we forgot to list you here, contact us and we will add your name.

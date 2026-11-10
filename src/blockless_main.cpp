@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <iomanip>
 
-#include "blockless.h"
+#include "blockless_half.h"
+#include <string>
 #include "constants.h"
 
 // Counts the pulses of a P=12 snaperz extender without simulating the extender
@@ -21,14 +22,28 @@
 // The simulator arrives at T_L by simulating the real extender, and this
 // arrives at it from the theory; keeping them apart keeps them independent, so
 // that they can be used to check each other.
-int main()
+int main(int argc, char** argv)
 {
+  const bool half_cycle = argc == 2 && std::string(argv[1]) == "--half";
+  if (argc > 1 && !half_cycle)
+  {
+    std::cerr << "Usage: blockless [--half]\n";
+    return 1;
+  }
+  if (half_cycle && (kLength <= 16 || kPeriod != 12 || kPushLimit != 1))
+  {
+    std::cerr << "Half-cycle counting requires L > 16, period 12 and push limit 1\n";
+    return 1;
+  }
+  std::cout << (half_cycle ? "Half-cycle counter\n" : "Wavefront/scalar counter\n");
   std::cout
     << "Running blockless " << kLength << " extender, "
     << kPeriod << " tick period." << std::endl;
 
   const auto start = std::chrono::steady_clock::now();
-  const snaperz::blockless::Result result = snaperz::blockless::run();
+  const snaperz::blockless::Result result = half_cycle
+    ? snaperz::blockless::half::run(kLength).result
+    : snaperz::blockless::run();
   const double seconds = std::chrono::duration<double>(
     std::chrono::steady_clock::now() - start).count();
 
