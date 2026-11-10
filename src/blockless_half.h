@@ -61,7 +61,8 @@ inline Count run(uint32_t length)
     y = x;
     const uint32_t head = y[0], explicit_steps = std::min(head, m - 1);
     y[0] = 0;
-    for (uint32_t i = 0; i < explicit_steps; ++i) { ++y[0]; sweep(y); }
+    if constexpr (Simd) power_simd<false,true>(y,explicit_steps);
+    else for (uint32_t i = 0; i < explicit_steps; ++i) { ++y[0]; sweep(y); }
     y.back() += head - explicit_steps;
     if constexpr (Simd) { power_simd(y,435); power_simd(y,31,1); }
     else {
@@ -69,19 +70,22 @@ inline Count run(uint32_t length)
       for (unsigned i = 0; i < 31; ++i) sweep(y,1);
     }
 
-    scratch = y;
-    std::fill(reflected.begin(), reflected.end(), 0);
-    reflected[0] = y[0];
-    const uint32_t mass = m - y[0];
-    for (uint32_t rank = 1; rank <= mass; ++rank)
+    if (!Simd || !retiming_simd(y,reflected))
     {
-      uint32_t total = 0;
-      for (size_t j = 1; j < m; ++j)
+      scratch = y;
+      std::fill(reflected.begin(), reflected.end(), 0);
+      reflected[0] = y[0];
+      const uint32_t mass = m - y[0];
+      for (uint32_t rank = 1; rank <= mass; ++rank)
       {
-        total += scratch[j];
-        if (total >= rank) { ++reflected[j]; break; }
+        uint32_t total = 0;
+        for (size_t j = 1; j < m; ++j)
+        {
+          total += scratch[j];
+          if (total >= rank) { ++reflected[j]; break; }
+        }
+        if (rank < mass) inverse(scratch, 1);
       }
-      if (rank < mass) inverse(scratch, 1);
     }
     if constexpr (Simd) power_simd(reflected,31,1);
     else for (unsigned i = 0; i < 31; ++i) sweep(reflected, 1);
