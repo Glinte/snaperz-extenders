@@ -30,6 +30,10 @@ inline void inverse(State& a, size_t start = 0)
   }
 }
 
+}}}
+#include "blockless_half_simd.h"
+namespace snaperz { namespace blockless { namespace half {
+
 struct Count
 {
   Result result;
@@ -38,6 +42,7 @@ struct Count
   bool edge;
 };
 
+template<bool Simd = true>
 inline Count run(uint32_t length)
 {
   if (length <= 16) throw std::invalid_argument("half-cycle requires L > 16");
@@ -58,8 +63,11 @@ inline Count run(uint32_t length)
     y[0] = 0;
     for (uint32_t i = 0; i < explicit_steps; ++i) { ++y[0]; sweep(y); }
     y.back() += head - explicit_steps;
-    for (unsigned i = 0; i < 435; ++i) sweep(y);
-    for (unsigned i = 0; i < 31; ++i) sweep(y, 1);
+    if constexpr (Simd) { power_simd(y,435); power_simd(y,31,1); }
+    else {
+      for (unsigned i = 0; i < 435; ++i) sweep(y);
+      for (unsigned i = 0; i < 31; ++i) sweep(y,1);
+    }
 
     scratch = y;
     std::fill(reflected.begin(), reflected.end(), 0);
@@ -75,7 +83,8 @@ inline Count run(uint32_t length)
       }
       if (rank < mass) inverse(scratch, 1);
     }
-    for (unsigned i = 0; i < 31; ++i) sweep(reflected, 1);
+    if constexpr (Simd) power_simd(reflected,31,1);
+    else for (unsigned i = 0; i < 31; ++i) sweep(reflected, 1);
     // Edge first: necessary also for a singleton family cycle.
     if (reflected == x) { edge = true; period = 2*elapsed - (m + uint64_t(466)); break; }
     if (reflected == y) { edge = false; period = 2*elapsed + y[0] - m; break; }
@@ -86,11 +95,13 @@ inline Count run(uint32_t length)
   if (!(period & 1))
   {
     rewind = elapsed - period/2;
-    for (unsigned i = 0; i < 15; ++i) inverse(y, 1);
+    if constexpr (Simd) power_simd<true>(y,15,1);
+    else for (unsigned i = 0; i < 15; ++i) inverse(y, 1);
     State decoded(length);
     decoded[0] = y[0] + 16;
     std::copy(y.begin()+1, y.end(), decoded.begin()+17);
-    for (uint64_t i = 0; i < rewind; ++i) inverse(decoded);
+    if constexpr (Simd) power_simd<true>(decoded,static_cast<unsigned>(rewind));
+    else for (uint64_t i = 0; i < rewind; ++i) inverse(decoded);
     eps = decoded.back() != 0;
   }
   return {{period - (length - 1), eps, period,
